@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cd guidock
+provided_version=1.0.9
+version=${provided_version:-latest}
+echo $version
+docker build --tag armdocker.rnd.ericsson.se/aia/adp/adp-gui-container:${version} .
+echo Pushing....
+echo $version
+docker push armdocker.rnd.ericsson.se/aia/adp/adp-gui-container:${version}

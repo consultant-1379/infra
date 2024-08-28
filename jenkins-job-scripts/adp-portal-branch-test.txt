@@ -1,0 +1,43 @@
+common_base="https://seliius18473.seli.gic.ericsson.se"
+image_version=1.0.8
+
+free -m
+df -kh
+
+if [[ "$GERRIT_EVENT_TYPE" = "ref-updated" ]];
+then
+echo "Aborting due to unintended gerrit trigger."
+exit 1
+fi
+
+if [[ "$test_suites" = "everything" ]];
+then
+suites=""
+else
+suites="-t $test_suites"
+fi
+
+envtag="test"
+if [[ "$environment_to_test" = "test" ]];
+then
+baseurl=${common_base}:58090/
+elif [[ -z "$environment_to_test" ]];
+then
+exit 1
+else
+baseurl=${common_base}:5808${environment_to_test}/
+envtag="env${environment_to_test}"
+fi
+
+# In general the debugging information from the script is poor, to see exactly why a protractor build fails try the following
+docker run armdocker.rnd.ericsson.se/aia/adp/adp-gui-container:${image_version} webdriver-manager status
+# docker run armdocker.rnd.ericsson.se/aia/adp/adp-gui-container:${image_version} webdriver-manager start
+if [[ "$use_test_env" = "standalone" ]];
+then
+./docker-test.sh -v ${image_version} -u ${baseurl} ${suites} -a "--params.mailTag=${envtag}"
+else
+image_version=1.0.10
+./docker-test.sh -v ${image_version} -u ${baseurl} ${suites}
+# docker run --net=host --rm --shm-size=2g -v ${PWD}:/home/tmp armdocker.rnd.ericsson.se/aia/adp/adp-gui-container:${image_version} /bin/bash -c "/usr/bin/google-chrome"
+fi
+rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi

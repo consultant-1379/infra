@@ -1,0 +1,50 @@
+{
+    "debugging": true, 
+    "NOTIFICATION": "https://seliius18473.seli.gic.ericsson.se/notify/send-email", 
+    "WORDPRESS": {
+        "DOC": "pages?slug=:docname", 
+        "BLOGS": "posts?per_page=50", 
+        "SEARCHPOSTS": "posts?per_page=100&search=:keyword", 
+        "PARENT_EXIDS": "pages?parent=:pid:ids", 
+        "USER": "users/:userid", 
+        "NEWS": "posts?categories=35&per_page=50", 
+        "PAGE_STATUS": "pages/:id?status=:status", 
+        "CATEGORIES": "categories?parent=:parent", 
+        "SEARCH": "search/:keyword", 
+        "USERS": "users?per_page=100", 
+        "AUTHOR": "users?slug=:signum", 
+        "SAVEPOST": "posts", 
+        "LIST_ALL_CATEGORIES_AND_CHILDREN": "allcategories", 
+        "POSTS": "posts", 
+        "CREATE_PAGE": "pages", 
+        "MENUS": "adp_portal_menu", 
+        "PAGECHECKPATH": "fetchArticleValidatePath", 
+        "TUTORIALCHECKPATH": "fetchTutorialPageValidatePath", 
+        "CATEGORIES_ALL": "categories?per_page=100", 
+        "CATEGORY": "posts?categories=:catid&per_page=100", 
+        "MENU": "fetch_menu", 
+        "DOC_PREVIEW": "preview/:id", 
+        "BLOG": "posts/:id", 
+        "HIGHLIGHTS": "highlightsMenuList", 
+        "TUTORIAL_PAGE": "tutorialPageBySlug", 
+        "PAGE": "pages/:id"
+    }, 
+    "GERRIT": {
+        "DOC": "https://seliius18473.seli.gic.ericsson.se/gerrit/http://gerrit-gamma.gic.ericsson.se/a/projects/:project/branches/master/files/:file/content"
+    }, 
+    "DEV": "seliius18473.seli.gic.ericsson.se", 
+    "ELASTICSEARCH": "https://131.160.143.86:9200", 
+    "PORTAL_API": "https://seliius18473.seli.gic.ericsson.se/api", 
+    "LOGIN": "https://seliius18473.seli.gic.ericsson.se/wordpress/wp-json", 
+    "API_ENDPOINTS": {
+        "COUCHDB": "https://seliius18473.seli.gic.ericsson.se/database/adp"
+    }, 
+    "MAIL_OPTIONS": {
+        "toList": [
+            "john.j.dolan@ericsson.com"
+        ], 
+        "from": "adp.portal.mailer@ericsson.com", 
+        "devMode": true
+    }, 
+    "BASE_URL_WORDPRESS": "https://seliius18473.seli.gic.ericsson.se/wordpress/wp-json/wp/v2/"
+}

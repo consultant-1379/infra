@@ -1,0 +1,52 @@
+# script used by the https://fem136-eiffel004.lmera.ericsson.se:8443/jenkins/view/7-Docker/job/microservices_kafka_Release
+# job to build and push the docker image and the aia_snapshot helm chart
+
+# Get Helm binary
+curl https://kubernetes-helm.storage.googleapis.com/helm-v2.8.1-linux-amd64.tar.gz | tar -zxv linux-amd64/helm --strip-components 1
+`pwd`/helm init --client-only
+
+
+sed -i "s/LABEL GIT_COMMIT=.*/LABEL GIT_COMMIT=`git rev-parse HEAD`/g" Docker/Dockerfile
+
+KAFKA_VERSION=`cat Docker/pom.xml | grep '<kafkaVersion>' | awk -F '>' '{print $2}' | awk -F '<' '{print $1}'`
+HELM_KAFKA_VERSION=$(sed 's|\.|-|g' <<< $KAFKA_VERSION)
+DOCKER_REG=`cat Docker/pom.xml | grep '<docker.registry>' | awk -F '>' '{print $2}' | awk -F '<' '{print $1}'`
+DOCKER_REPO=`cat Docker/pom.xml | grep '<docker.repository>' | awk -F '>' '{print $2}' | awk -F '<' '{print $1}'`
+DOCKER_IMAGE_NAME=`cat Docker/pom.xml | grep '<docker.image.name>' | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | awk -F '-' '{print $1}'`
+
+CHART_FOLDER=Helm/$DOCKER_IMAGE_NAME
+sed -i "s/registry:.*/registry: $DOCKER_REG\/$DOCKER_REPO/g" $CHART_FOLDER/values.yaml
+POM_VERSION=`cat Docker/pom.xml | grep "^    <version>.*</version>" | awk -F'[>\\\\-SNAPSHOT<]' '{print $3}'`
+sed -i "s/name:.*/name: $DOCKER_IMAGE_NAME-$KAFKA_VERSION/g" $CHART_FOLDER/values.yaml
+sed -i "s/tag:.*/tag: $POM_VERSION-SNAPSHOT/g" $CHART_FOLDER/values.yaml
+sed -i "s/version:.*/version: $POM_VERSION/g" $CHART_FOLDER/Chart.yaml
+
+cat $CHART_FOLDER/values.yaml
+cat $CHART_FOLDER/Chart.yaml
+
+CHART_NAME=$(`pwd`/helm inspect chart ${CHART_FOLDER} | grep -v '^ ' | grep name: | awk '{ print $2 }')
+CHART_VERSION=$(`pwd`/helm inspect chart ${CHART_FOLDER}| grep version: | awk '{ print $2 }')
+CHART_PACKAGE=${CHART_NAME}-${CHART_VERSION}.tgz
+CHART_ARM_PATH=https://$DOCKER_REG/artifactory/proj-helm_aia-generic-local/snapshots/$DOCKER_IMAGE_NAME
+rm -f Helm/$DOCKER_IMAGE_NAME-$HELM_KAFKA_VERSION/index.yaml Helm/$DOCKER_IMAGE_NAME/*.tgz
+
+# Update chart and values yaml files
+
+
+# Package the chart
+`pwd`/helm package ${CHART_FOLDER} --destination $CHART_FOLDER
+
+# Fetch last index.yaml and generate new index.yaml
+echo getting index file
+curl -k -X GET "${CHART_ARM_PATH}/index.yaml" -o $CHART_FOLDER/index.yaml
+echo index gotten, now merging
+`pwd`/helm repo index --debug --merge $CHART_FOLDER/index.yaml --url ${CHART_ARM_PATH} $CHART_FOLDER/
+echo finished merging
+
+# Upload new chart package and index.yaml
+curl -k -X PUT "${CHART_ARM_PATH}/${CHART_PACKAGE}" -T $CHART_FOLDER/${CHART_PACKAGE}
+curl -k -X PUT "${CHART_ARM_PATH}/index.yaml" -T $CHART_FOLDER/index.yaml
+
+
+echo "DOCKER_IMAGE_VERSION=$POM_VERSION" > docker_image_version.txt
+echo "TESTSUITE=Platform_Kafka" >> docker_image_version.txt

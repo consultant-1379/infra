@@ -1,0 +1,7 @@
+testImg="armdocker.rnd.ericsson.se/aia/adp/portal-wordpress-test"
+workDir="/app/themes/adp-portal"
+
+docker pull ${testImg}:latest
+cd portal-adp-deploy/ssl/dev/wordpress/src/themes/adp-portal
+
+docker run -v ${PWD}:${workDir} -w ${workDir} ${testImg} /app/vendor/bin/phpcs --report-checkstyle=${workDir}/checkstyle.xml --report-summary

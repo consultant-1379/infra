@@ -1,0 +1,1 @@
+/bin/cp -f ./nginx.conf /local/data/config/nginx/nginx.conf

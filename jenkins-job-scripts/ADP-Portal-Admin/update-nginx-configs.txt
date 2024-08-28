@@ -1,0 +1,33 @@
+#!/bin/bash
+
+staging_env=seliius18473.seli.gic.ericsson.se
+new_staging_env=seliius21284.seli.gic.ericsson.se
+live_env=seliius23906.seli.gic.ericsson.se
+
+key_arg="-i /home/aiaadm100/.ssh/id_rsa"
+staging_login="root@${staging_env}"
+new_staging_login="root@${new_staging_env}"
+live_login="root@${live_env}"
+
+ssh_staging="ssh -q ${key_arg} ${staging_login}"
+ssh_new_staging="ssh -q ${key_arg} ${new_staging_login}"
+ssh_live="ssh -q ${key_arg} ${live_login}"
+
+filename=config.json
+rm -rf dsl
+repo_root=${PWD}
+cd portal-adp-deploy/ssl/nginx/
+
+scp -r ${key_arg} ./staging/nginx.conf ${staging_login}:/local/data/config/nginx/nginx.conf
+scp -r ${key_arg} ./test0/nginx.conf ${staging_login}:/local/data0/config/nginx/nginx.conf
+scp -r ${key_arg} ./test1/nginx.conf ${staging_login}:/local/data1/config/nginx/nginx.conf
+scp -r ${key_arg} ./test2/nginx.conf ${staging_login}:/local/data2/config/nginx/nginx.conf
+scp -r ${key_arg} ./test3/nginx.conf ${staging_login}:/local/data3/config/nginx/nginx.conf
+scp -r ${key_arg} ./test4/nginx.conf ${staging_login}:/local/data4/config/nginx/nginx.conf
+scp -r ${key_arg} ./test5/nginx.conf ${staging_login}:/local/data5/config/nginx/nginx.conf
+scp -r ${key_arg} ./new_staging/nginx.conf ${new_staging_login}:/local/data/config/nginx/nginx.conf
+scp -r ${key_arg} ./live/nginx.conf ${live_login}:/local/data/config/nginx/nginx.conf
+
+
+cd ${repo_root}
+rm -rf ./*

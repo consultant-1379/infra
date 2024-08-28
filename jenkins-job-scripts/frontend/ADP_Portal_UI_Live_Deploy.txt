@@ -1,0 +1,56 @@
+
+# Jenkins provided variables
+# target_host: the host to deploy on
+# version: The adp portal frontend version to deploy
+# azure_secret: The secret required for the azure environment
+
+echo DEPLOYING $version to ${target_host}
+repo_root=${PWD}
+cd portal-adp-deploy/portal-ui-deploy/
+
+
+# Constants
+environment_type="live"
+client_id="cf9fa3b4-e628-4ec1-8011-288989530a7a"
+
+
+# Run variables
+deploy_version="$version"
+. ./configs/${environment_type}
+. ./configs/config_tester.sh
+
+
+# Commands
+ssh_cmd="ssh $testenv"
+vact="source /local/dock-env/bin/activate; export AZURE_CLIENT_SECRET=${azure_secret}; export AZURE_CLIENT_ID=${client_id}; export PORTAL_FUNC_USER=${adp_portal_functional_user};export PORTAL_FUNC_USER_PASSWORD=${adp_portal_functional_pass}"
+
+
+# Download target artifacts
+./get.sh -v ${deploy_version}
+deploy_file=$(ls -rt ./*.zip | tail -1)
+rm -rf dist
+unzip ${deploy_file}
+
+
+# Use bundled dependency configs to decide deployment dependencies
+api_version=$(cat dist/assets/config/api.conf)
+
+
+## Old script used to modify the single backend version
+${ssh_cmd} "sed -i \"s/${version_key}=.*\$/${version_key}=${api_version}/\" $env_file"
+
+
+## New script used to extract backend.env from FE artifact and insert to target env
+## If backend.env does not exist this step will do nothing
+cp dist/assets/config/backend.env ./backend.env 2>/dev/null || :
+./update_env_file.sh -e insert -f ${compose_location}/.env -k ~/.ssh/id_rsa -t ${testenv} -n ""
+
+
+# Pull the latest images for deployable services according to the updated .env file
+# If the pull fails the deployment should abort
+${ssh_cmd} "${vact}; cd $compose_location;docker-compose pull $deployable_services"       
+${ssh_cmd} "${vact}; cd $compose_location;docker-compose up -d $deployable_services"
+${ssh_cmd} "${vact}; cd $compose_location;docker restart nginx-portal-content-ssl"
+
+# Update the frontend. Most variables passed to this script are read from configs/live
+./deploy.sh -u ${user} -h $target_host -b $adp_bkp -d $adp_folder -k ${key_file} -f ${deploy_file} -a ${adp_user} -g ${adp_group} -j jsons/${env_json}

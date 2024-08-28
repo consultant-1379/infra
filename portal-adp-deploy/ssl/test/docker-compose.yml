@@ -1,0 +1,799 @@
+version: '2.1'
+networks:
+   portal-network:
+
+services:
+   testmariadbssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/mariadb:10.4.13
+     container_name: wp-mysql-ssl-test
+     volumes:
+       - /local/data/test/wordpress/mysql:/var/lib/mysql
+     ports:
+       - "23308:3306"
+     restart: always
+     networks:
+       - portal-network
+     environment:
+       MYSQL_ROOT_PASSWORD: my-secret-pw
+       MYSQL_DATABASE: wordpress
+       MYSQL_USER: root
+       MYSQL_PASSWORD: my-secret-pw
+   mockldap:
+     image: armdocker.rnd.ericsson.se/aia/adp/mockldap-test:1.0.1
+     container_name: mock-ldap
+     ports:
+       - "38900:389"
+     networks:
+       - portal-network
+     restart: always
+     environment:
+       LDAP_TLS: "false"
+   elasticsearchtest:
+      image: armdocker.rnd.ericsson.se/aia/adp/elasticsearch:7.9.2
+      restart: always
+      container_name: elasticsearchtest
+      environment:
+       - discovery.type=single-node
+       - bootstrap.memory_lock=true
+       - "ES_JAVA_OPTS=-Xms512m -Xmx1024m"
+      ulimits:
+        memlock:
+          soft: -1
+          hard: -1
+      volumes:
+       - /local/data/test/elastic:/usr/share/elasticsearch/data
+      ports:
+        - 48020:9200
+        - 48030:9300
+      networks: 
+        - portal-network
+   kibanatest:
+      image: armdocker.rnd.ericsson.se/aia/adp/kibana:7.9.2
+      restart: always
+      container_name: kibanatest
+      environment: 
+        - "ELASTICSEARCH_HOSTS=http://elasticsearchtest:9200"
+      ports:
+        - 48021:5601
+      networks: 
+        - portal-network
+   testwordpressssl:
+     depends_on:
+       - testmariadbssl
+       - mockldap
+     links:
+       - testmariadbssl
+       - mockldap
+     image: armdocker.rnd.ericsson.se/aia/adp/portal-wordpress:1.0.1
+     networks:
+       - portal-network
+     container_name: wordpress-ssl-test
+     volumes:
+       - /local/data/test/wordpress/html:/var/www/html
+       - /local/data/config/apache/adp.test.ericsson.se.conf:/etc/apache2/sites-enabled/adp.test.ericsson.se.conf
+       - /local/data/certs:/etc/ssl/certs
+     ports:
+       - "23309:443"
+     restart: always
+     environment:
+       WORDPRESS_DB_PASSWORD: wordpress
+       WORDPRESS_DB_USER: root
+       WORDPRESS_DB_PASSWORD: my-secret-pw
+       WORDPRESS_DB_HOST: testmariadbssl
+   dupe0nginxssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/nginx:1.22.1
+     networks:
+        - portal-network
+     container_name: duep0-nginx
+     links:
+       - testwordpressssl
+       - dupe0adpbackend
+       - nodemailerssltest
+     volumes:
+       - /local/data0/adp/:/usr/share/nginx/html
+       - /local/data/certs:/etc/ssl/certs
+       - /local/data0/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+     ports:
+       - "58090:443"
+     restart: always
+     environment:
+       host: seliius18473.seli.gic.ericsson.se
+       zuul.routes.wordpress.url: wordpress
+   mockserver0:
+     image: armdocker.rnd.ericsson.se/aia/adp/mockserver:latest
+     container_name: mockserver0
+     ports:
+       - "56060:1080"
+     networks:
+       - portal-network
+     restart: always
+   mongo0:
+     container_name: mongo0
+     image: armdocker.rnd.ericsson.se/aia/adp/mongo:4.4.1
+     restart: always
+     volumes:
+       - /local/data0/mongodb:/data/db
+     environment: 
+       MONGO_INITDB_ROOT_USERNAME: admin
+       MONGO_INITDB_ROOT_PASSWORD: mysecretpassword
+     ports:
+       - 27018:27017
+     command: --wiredTigerCacheSizeGB 0.5
+     networks:
+       - portal-network
+   mongo-express0:
+     container_name: mongo-express0
+     image: armdocker.rnd.ericsson.se/aia/adp/mongoexpress:0.54.0
+     restart: always
+     links:
+       - mongo0
+     ports:
+       - 48092:8081
+     environment: 
+       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+       ME_CONFIG_MONGODB_ADMINPASSWORD: mysecretpassword
+       ME_CONFIG_BASICAUTH_USERNAME: admin
+       ME_CONFIG_BASICAUTH_PASSWORD: mysecretpassword
+       ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+       ME_CONFIG_MONGODB_SERVER: mongo0
+     depends_on: 
+       - mongo0
+     networks:
+       - portal-network
+   dupe0adpbackend:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION0:-test}
+      volumes:
+       - /local/data0/test/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      restart: always
+      container_name: dupe0_adp_backend
+      networks:
+        - portal-network
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58090/notify/mockartifactory/setfolder/env90/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58090/notify/mockartifactory/env90/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mockldap
+        - mongo0
+      depends_on: 
+        - mongo0
+   dupe0adpbackendworker:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION0:-test}
+      volumes:
+       - /local/data0/test/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28076:9999"
+      restart: always
+      container_name: dupe0_adp_worker
+      networks:
+        - portal-network
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - BACKEND_TYPE=WORKER
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58090/notify/mockartifactory/setfolder/env90/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58090/notify/mockartifactory/env90/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mockldap
+        - mongo0
+      depends_on: 
+        - mongo0
+   dupe0asciidoctorservice:
+      image: armdocker.rnd.ericsson.se/aia/adp/asciidoctorservice:${ASCIIDOCTOR_SERVICE_VERSION0:-test}
+      restart: always
+      container_name: dupe0asciidoctorservice
+      networks: 
+        - portal-network
+   nodemailerssltest:
+     image: armdocker.rnd.ericsson.se/aia/adp/adp-nodemailer-mock:latest
+     volumes:
+       - /local/data/certs:/etc/ssl/certs
+     container_name: nodemailer-ssl-test
+     restart: always
+     networks:
+       - portal-network
+
+   dupe1nginxssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/nginx:1.22.1
+     container_name: dupe1-nginx
+     volumes:
+       - /local/data1/adp/:/usr/share/nginx/html
+       - /local/data/certs:/etc/ssl/certs
+       - /local/data1/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+     ports:
+       - "58081:443"
+     restart: always
+     environment:
+       host: seliius18473.seli.gic.ericsson.se
+       zuul.routes.wordpress.url: wordpress
+     networks:
+       - portal-network
+   mockserver1:
+     image: armdocker.rnd.ericsson.se/aia/adp/mockserver:latest
+     container_name: mockserver1
+     networks:
+       - portal-network
+     ports:
+       - "56061:1080"
+     restart: always
+   mongo1:
+     container_name: mongo1
+     image: armdocker.rnd.ericsson.se/aia/adp/mongo:4.4.1
+     restart: always
+     volumes:
+       - /local/data1/mongodb:/data/db
+     environment: 
+       MONGO_INITDB_ROOT_USERNAME: admin
+       MONGO_INITDB_ROOT_PASSWORD: mysecretpassword
+     ports:
+       - 27019:27017
+     command: --wiredTigerCacheSizeGB 0.5
+     networks:
+       - portal-network
+   mongo-express1:
+     container_name: mongo-express1
+     image: armdocker.rnd.ericsson.se/aia/adp/mongoexpress:0.54.0
+     restart: always
+     links:
+       - mongo1
+     ports:
+       - 48093:8081
+     environment: 
+       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+       ME_CONFIG_MONGODB_ADMINPASSWORD: mysecretpassword
+       ME_CONFIG_BASICAUTH_USERNAME: admin
+       ME_CONFIG_BASICAUTH_PASSWORD: mysecretpassword
+       ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+       ME_CONFIG_MONGODB_SERVER: mongo1
+     depends_on: 
+       - mongo1
+     networks:
+       - portal-network
+   dupe1adpbackend:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION1:-test}
+      volumes:
+       - /local/data1/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28071:9999"
+      restart: always
+      container_name: dupe1_adp_backend
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58081/notify/mockartifactory/setfolder/env81/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58081/notify/mockartifactory/env81/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mockldap
+        - mongo1
+      depends_on:
+        - mongo1
+      networks:
+        - portal-network
+   dupe1adpbackendworker:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION1:-test}
+      volumes:
+       - /local/data1/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28077:9999"
+      restart: always
+      container_name: dupe1_adp_worker
+      networks:
+        - portal-network
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - BACKEND_TYPE=WORKER
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58081/notify/mockartifactory/setfolder/env81/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58081/notify/mockartifactory/env81/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mockldap
+        - mongo1
+      depends_on: 
+        - mongo1
+   dupe1asciidoctorservice:
+      image: armdocker.rnd.ericsson.se/aia/adp/asciidoctorservice:${ASCIIDOCTOR_SERVICE_VERSION1:-test}
+      restart: always
+      container_name: dupe1asciidoctorservice
+      networks: 
+        - portal-network
+   dupe2nginxssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/nginx:1.22.1
+     container_name: dupe2-nginx
+     volumes:
+       - /local/data2/adp/:/usr/share/nginx/html
+       - /local/data/certs:/etc/ssl/certs
+       - /local/data2/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+     ports:
+       - "58082:443"
+     restart: always
+     environment:
+       host: seliius18473.seli.gic.ericsson.se
+       zuul.routes.wordpress.url: wordpress
+     networks:
+       - portal-network
+   mockserver2:
+     image: armdocker.rnd.ericsson.se/aia/adp/mockserver:latest
+     container_name: mockserver2
+     networks:
+       - portal-network
+     ports:
+       - "56062:1080"
+     restart: always
+   mongo2:
+     container_name: mongo2
+     image: armdocker.rnd.ericsson.se/aia/adp/mongo:4.4.1
+     restart: always
+     volumes:
+       - /local/data2/mongodb:/data/db
+     environment: 
+       MONGO_INITDB_ROOT_USERNAME: admin
+       MONGO_INITDB_ROOT_PASSWORD: mysecretpassword
+     ports:
+       - 27020:27017
+     command: --wiredTigerCacheSizeGB 0.5
+     networks:
+       - portal-network
+   mongo-express2:
+     container_name: mongo-express2
+     image: armdocker.rnd.ericsson.se/aia/adp/mongoexpress:0.54.0
+     restart: always
+     links:
+       - mongo2
+     ports:
+       - 48094:8081
+     environment: 
+       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+       ME_CONFIG_MONGODB_ADMINPASSWORD: mysecretpassword
+       ME_CONFIG_BASICAUTH_USERNAME: admin
+       ME_CONFIG_BASICAUTH_PASSWORD: mysecretpassword
+       ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+       ME_CONFIG_MONGODB_SERVER: mongo2
+     depends_on: 
+       - mongo2
+     networks:
+       - portal-network
+   dupe2adpbackend:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION2:-test}
+      volumes:
+       - /local/data2/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28072:9999"
+      restart: always
+      container_name: dupe2_adp_backend
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58082/notify/mockartifactory/setfolder/env82/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58082/notify/mockartifactory/env82/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mongo2
+      depends_on:
+        - mongo2
+      networks:
+        - portal-network
+   dupe2adpbackendworker:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION2:-test}
+      volumes:
+       - /local/data2/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28078:9999"
+      restart: always
+      container_name: dupe2_adp_worker
+      networks:
+        - portal-network
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - BACKEND_TYPE=WORKER
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58082/notify/mockartifactory/setfolder/env82/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58082/notify/mockartifactory/env82/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mongo2
+      depends_on: 
+        - mongo2
+   dupe2asciidoctorservice:
+      image: armdocker.rnd.ericsson.se/aia/adp/asciidoctorservice:${ASCIIDOCTOR_SERVICE_VERSION2:-test}
+      restart: always
+      container_name: dupe2asciidoctorservice
+      networks: 
+        - portal-network
+   dupe3nginxssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/nginx:1.22.1
+     container_name: dupe3-nginx
+     volumes:
+       - /local/data3/adp/:/usr/share/nginx/html
+       - /local/data/certs:/etc/ssl/certs
+       - /local/data3/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+     ports:
+       - "58083:443"
+     restart: always
+     environment:
+       host: seliius18473.seli.gic.ericsson.se
+       zuul.routes.wordpress.url: wordpress
+     networks:
+       - portal-network
+   mockserver3:
+     image: armdocker.rnd.ericsson.se/aia/adp/mockserver:latest
+     container_name: mockserver3
+     networks:
+       - portal-network
+     ports:
+       - "56063:1080"
+     restart: always
+   mongo3:
+     container_name: mongo3
+     image: armdocker.rnd.ericsson.se/aia/adp/mongo:4.4.1
+     restart: always
+     volumes:
+       - /local/data3/mongodb:/data/db
+     environment: 
+       MONGO_INITDB_ROOT_USERNAME: admin
+       MONGO_INITDB_ROOT_PASSWORD: mysecretpassword
+     ports:
+       - 27021:27017
+     command: --wiredTigerCacheSizeGB 0.5
+     networks:
+       - portal-network
+   mongo-express3:
+     container_name: mongo-express3
+     image: armdocker.rnd.ericsson.se/aia/adp/mongoexpress:0.54.0
+     restart: always
+     links:
+       - mongo3
+     ports:
+       - 48095:8081
+     environment: 
+       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+       ME_CONFIG_MONGODB_ADMINPASSWORD: mysecretpassword
+       ME_CONFIG_BASICAUTH_USERNAME: admin
+       ME_CONFIG_BASICAUTH_PASSWORD: mysecretpassword
+       ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+       ME_CONFIG_MONGODB_SERVER: mongo3
+     depends_on: 
+       - mongo3
+     networks:
+       - portal-network
+   dupe3adpbackend:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION3:-test}
+      volumes:
+       - /local/data3/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28073:9999"
+      restart: always
+      container_name: dupe3_adp_backend
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58083/notify/mockartifactory/setfolder/env83/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58083/notify/mockartifactory/env83/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mongo3
+      depends_on:
+        - mongo3
+      networks:
+        - portal-network
+   dupe3adpbackendworker:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION3:-test}
+      volumes:
+       - /local/data3/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28079:9999"
+      restart: always
+      container_name: dupe3_adp_worker
+      networks:
+        - portal-network
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - BACKEND_TYPE=WORKER
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58083/notify/mockartifactory/setfolder/env83/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58083/notify/mockartifactory/env83/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mongo3
+      depends_on: 
+        - mongo3
+   dupe3asciidoctorservice:
+      image: armdocker.rnd.ericsson.se/aia/adp/asciidoctorservice:${ASCIIDOCTOR_SERVICE_VERSION3:-test}
+      restart: always
+      container_name: dupe3asciidoctorservice
+      networks: 
+        - portal-network
+   mockserver4:
+     image: armdocker.rnd.ericsson.se/aia/adp/mockserver:latest
+     container_name: mockserver4
+     networks:
+       - portal-network
+     ports:
+       - "56064:1080"
+     restart: always
+   dupe4nginxssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/nginx:1.22.1
+     container_name: dupe4-nginx
+     volumes:
+       - /local/data4/adp/:/usr/share/nginx/html
+       - /local/data/certs:/etc/ssl/certs
+       - /local/data4/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+     ports:
+       - "58084:443"
+     restart: always
+     environment:
+       host: seliius18473.seli.gic.ericsson.se
+       zuul.routes.wordpress.url: wordpress
+     networks:
+       - portal-network
+   mongo4:
+     container_name: mongo4
+     image: armdocker.rnd.ericsson.se/aia/adp/mongo:4.4.1
+     restart: always
+     volumes:
+       - /local/data4/mongodb:/data/db
+     environment: 
+       MONGO_INITDB_ROOT_USERNAME: admin
+       MONGO_INITDB_ROOT_PASSWORD: mysecretpassword
+     ports:
+       - 27022:27017
+     command: --wiredTigerCacheSizeGB 0.5
+     networks:
+       - portal-network
+   mongo-express4:
+     container_name: mongo-express4
+     image: armdocker.rnd.ericsson.se/aia/adp/mongoexpress:0.54.0
+     restart: always
+     links:
+       - mongo4
+     ports:
+       - 48096:8081
+     environment: 
+       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+       ME_CONFIG_MONGODB_ADMINPASSWORD: mysecretpassword
+       ME_CONFIG_BASICAUTH_USERNAME: admin
+       ME_CONFIG_BASICAUTH_PASSWORD: mysecretpassword
+       ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+       ME_CONFIG_MONGODB_SERVER: mongo4
+     depends_on: 
+       - mongo4
+     networks:
+       - portal-network
+   dupe4adpbackend:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION4:-test}
+      volumes:
+       - /local/data4/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28074:9999"
+      restart: always
+      container_name: dupe4_adp_backend
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58084/notify/mockartifactory/setfolder/env84/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58084/notify/mockartifactory/env84/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      networks:
+        - portal-network
+      links:
+        - mongo4
+      depends_on:
+        - mongo4
+   dupe4adpbackendworker:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION4:-test}
+      volumes:
+       - /local/data4/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28080:9999"
+      restart: always
+      container_name: dupe4_adp_worker
+      networks:
+        - portal-network
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - BACKEND_TYPE=WORKER
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58084/notify/mockartifactory/setfolder/env84/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58084/notify/mockartifactory/env84/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mongo4
+      depends_on: 
+        - mongo4
+   dupe4asciidoctorservice:
+      image: armdocker.rnd.ericsson.se/aia/adp/asciidoctorservice:${ASCIIDOCTOR_SERVICE_VERSION4:-test}
+      restart: always
+      container_name: dupe4asciidoctorservice
+      networks: 
+        - portal-network
+   dupe5nginxssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/nginx:1.22.1
+     container_name: dupe5-nginx
+     volumes:
+       - /local/data5/adp/:/usr/share/nginx/html
+       - /local/data/certs:/etc/ssl/certs
+       - /local/data5/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+     ports:
+       - "58085:443"
+     restart: always
+     environment:
+       host: seliius18473.seli.gic.ericsson.se
+       zuul.routes.wordpress.url: wordpress
+     networks:
+       - portal-network
+   mockserver5:
+     image: armdocker.rnd.ericsson.se/aia/adp/mockserver:latest
+     container_name: mockserver5
+     networks:
+       - portal-network
+     ports:
+       - "56065:1080"
+     restart: always
+   mongo5:
+     container_name: mongo5
+     image: armdocker.rnd.ericsson.se/aia/adp/mongo:4.4.1
+     restart: always
+     volumes:
+       - /local/data5/mongodb:/data/db
+     environment: 
+       MONGO_INITDB_ROOT_USERNAME: admin
+       MONGO_INITDB_ROOT_PASSWORD: mysecretpassword
+     ports:
+       - 27023:27017
+     command: --wiredTigerCacheSizeGB 0.5
+     networks:
+       - portal-network
+   mongo-express5:
+     container_name: mongo-express5
+     image: armdocker.rnd.ericsson.se/aia/adp/mongoexpress:0.54.0
+     restart: always
+     links:
+       - mongo5
+     ports:
+       - 48097:8081
+     environment: 
+       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+       ME_CONFIG_MONGODB_ADMINPASSWORD: mysecretpassword
+       ME_CONFIG_BASICAUTH_USERNAME: admin
+       ME_CONFIG_BASICAUTH_PASSWORD: mysecretpassword
+       ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+       ME_CONFIG_MONGODB_SERVER: mongo5
+     depends_on: 
+       - mongo5
+     networks:
+       - portal-network
+   dupe5adpbackend:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION5:-test}
+      volumes:
+       - /local/data5/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28075:9999"
+      restart: always
+      container_name: dupe5_adp_backend
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58085/notify/mockartifactory/setfolder/env85/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58085/notify/mockartifactory/env85/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      networks:
+        - portal-network
+      links:
+        - mongo5
+      depends_on:
+        - mongo5
+   dupe5adpbackendworker:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION5:-test}
+      volumes:
+       - /local/data5/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp
+      ports:
+       - "28081:9999"
+      restart: always
+      container_name: dupe5_adp_worker
+      networks:
+        - portal-network
+      environment:
+        - PORTAL_FUNC_USER
+        - PORTAL_FUNC_USER_PASSWORD
+        - JWT_SECRET
+        - JWT_INTEGRATION
+        - BACKEND_TYPE=WORKER
+        - MOCK_ARTIFACTORY_SET=https://seliius18473.seli.gic.ericsson.se:58085/notify/mockartifactory/setfolder/env85/
+        - MOCK_ARTIFACTORY_GET=https://seliius18473.seli.gic.ericsson.se:58085/notify/mockartifactory/env85/dynamic/
+        - EGS_CLIENTID
+        - EGS_CLIENTSECRET
+        - EGS_SCOPE
+        - EGS_ACCESSTOKENURL
+        - EGS_GRANT=client_credentials
+      links:
+        - mongo5
+      depends_on: 
+        - mongo5
+   dupe5asciidoctorservice:
+      image: armdocker.rnd.ericsson.se/aia/adp/asciidoctorservice:${ASCIIDOCTOR_SERVICE_VERSION5:-test}
+      restart: always
+      container_name: dupe5asciidoctorservice
+      networks: 
+        - portal-network

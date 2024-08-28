@@ -1,0 +1,37 @@
+# ABOUT
+#   - This is a Configuration file for the DDNS scripts
+#   - This file is loaded by the following python modules: ddns.py, gen_bind_files.py and gen_ddns_sh.py
+# 
+# INSTRUCTIONS
+#   - Replace <value> in the text below with values for your DNS
+#   - All fields take only one value with the exception of "forwarders" and "ip_ranges"
+#   - Multiple "forwarders" and "ip_ranges" can be entered in a list
+#   - The IP address ranges represent both the fixed and floating IP ranges
+#   - The IP address ranges, e.g. "ip_ranges", must be on Octet boundaries, e.g. /24, /16, /8
+#
+# EXAMPLE
+# domain_name: cloud.mycompany.com
+# dns_shortname: mydns
+# dns_fixed_ip: 10.130.52.121
+# dns_floating_ip: 10.130.56.248
+# forwarders:
+#   - 10.130.0.1
+#   - 8.8.8.8
+# ip_ranges:
+#   - 10.130.52.0/24
+#   - 10.130.56.0/24
+#   - 10.130.57.0/24
+#
+# FILL IN VALUES BELOW
+#
+domain_name: aiadev.com 
+dns_shortname: clouddns
+dns_fixed_ip: 192.168.111.27
+dns_floating_ip: 131.160.133.48
+forwarders:
+  - 159.107.189.59
+ip_ranges:
+  - 131.160.133.0/24 
+  - 192.168.111.0/24   
+  - 192.168.22.0/24    
+  - 10.88.88.0/24    

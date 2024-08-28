@@ -1,0 +1,21 @@
+version: '1.0.1'
+documents:
+ - name: 'restrictedError'
+   filepath: '1.0.1/test.html'
+   restricted: true
+   default: true
+ - name: 'moreThenOneDefault'
+   external-link: 'moreThenOneDefault'
+   default: true
+ - name: ''
+   external-link: 'emptyName'
+ - name: 'sameName'
+   external-link: 'sameName'
+ - name: 'sameName'
+   external-link: 'sameName'
+ - name: 'emptyFilePath'
+   filepath: ''
+ - name: 'emptyExternalLink'
+   external-link: ''
+ - name: 'missingFilenameOrLink'
+   

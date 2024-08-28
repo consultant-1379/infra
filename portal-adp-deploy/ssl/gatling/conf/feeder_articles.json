@@ -1,0 +1,13 @@
+[
+    
+    {
+        "articleSlug":"meettheteam",
+        "articleType":"page",
+        "parentSlugArray": "community"
+    },
+    {
+        "articleSlug":"supportanddiscussion",
+        "articleType":"page",
+        "parentSlugArray": "community"
+    }
+]

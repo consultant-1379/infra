@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd portal-adp-deploy/ssl/dev/wordpress/
+chmod +x docker-build.sh docker-publish.sh
+./docker-build.sh 1.0.1
+./docker-publish.sh 1.0.1
+

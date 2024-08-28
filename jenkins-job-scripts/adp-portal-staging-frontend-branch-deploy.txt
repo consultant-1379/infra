@@ -1,0 +1,73 @@
+# variables from params
+# branch_to_build
+# site_to_deploy
+# skipApiDeploy
+
+#########################
+
+
+# Jenkins provided variables
+# target_host: the host to deploy on
+# version: The adp portal frontend version to deploy
+# azure_secret: The secret required for the azure environment
+target_host=seliius18473.seli.gic.ericsson.se
+echo DEPLOYING $version to ${target_host}
+repo_root=${PWD}
+
+
+# Constants
+environment_type="stage"
+client_id="42b0a05a-2867-4dbd-8eb3-451d9eca5059"
+
+# Build target artifacts
+zip_folder=${WORKSPACE}/adp/target/
+rm -f ${zip_folder}/*.zip
+cd adp
+./docker-build.sh
+mkdir -p target
+zip -r target/dist.zip ./dist
+deploy_file=$(ls -rt ${zip_folder}/*.zip | tail -1)
+cp -f target/dist.zip ../infra/portal-adp-deploy/portal-ui-deploy/
+cd ../infra/portal-adp-deploy/portal-ui-deploy/
+
+
+
+# Run variables
+export env_number=${site_to_deploy}
+. ./configs/${environment_type}
+. ./configs/config_tester.sh
+
+# Commands
+ssh_cmd="ssh $testenv"
+vact="source /local/dock-env/bin/activate; export AZURE_CLIENT_SECRET=${azure_secret}; export AZURE_CLIENT_ID=${client_id}"
+
+api_msg="without API update"
+if [ $skipApiDeploy = false ];
+then
+ api_msg="with API: ${tag}"
+ echo "Updating api to $tag"
+ # Use bundled dependency configs to decide deployment dependencies
+ api_version=$(cat dist/assets/config/api.conf)
+
+ ## Old script used to modify the single backend version
+ ${ssh_cmd} "sed -i \"s/${version_key}=.*\$/${version_key}=${api_version}/\" $env_file"
+
+ ## New script used to extract backend.env from FE artifact and copy to target env
+ ## If backend.env does not exist this step will do nothing
+ ./update_env_file.sh -e insert -f ${compose_location}/.env -k ~/.ssh/id_rsa -t ${testenv} -n ${environment_number}
+
+ # Pull the latest images for deployable services according to the updated .env file
+ # If the pull fails the deployment should abort
+ ${ssh_cmd} "${vact}; cd $compose_location;docker-compose pull $deployable_services"       
+ ${ssh_cmd} "${vact}; cd $compose_location;docker-compose up -d $deployable_services"
+fi
+# Update the frontend. Most variables passed to this script are read from configs/live
+./deploy.sh -u ${user} -h $target_host -b $adp_bkp -d $adp_folder -k ${key_file} -f ${deploy_file} -a ${adp_user} -g ${adp_group} -j jsons/${env_json}
+
+
+#######
+
+
+
+
+echo "Cause: $CAUSE -> Branch: ${branch_to_build} ${api_msg} -> Environment: ${site_to_deploy}" 

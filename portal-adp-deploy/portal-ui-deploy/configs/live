@@ -1,0 +1,21 @@
+user=root
+target_host=adp.ericsson.se
+adp_user=eadpusers
+adp_group=eusers
+testenv=${user}@${target_host}
+key_file=~/.ssh/id_rsa
+
+env_file=/local/data/compose/.env
+compose_location=/local/data/compose/
+service_name=adpbackend
+deployable_services="adpbackend adpbackendworker asciidoctorservice"
+container_name=adp_backend
+nginx_service=nginxssl
+restart_nginx=true
+version_key=BACKEND_VERSION
+
+adp_folder=/local/data/adp
+adp_bkp=/local/adp-backup
+env_json=plive.json
+
+baseurl="https://adp.ericsson.se/"

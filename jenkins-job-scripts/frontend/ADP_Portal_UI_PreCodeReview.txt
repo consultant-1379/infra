@@ -1,0 +1,3 @@
+./docker-unit-build.sh
+sed -i 's/\/home\/node\/workspace\///g' ./tslint-output.xml
+rm -rf node_modules

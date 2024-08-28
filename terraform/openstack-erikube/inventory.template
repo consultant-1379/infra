@@ -1,0 +1,31 @@
+
+[all:vars]
+ansible_ssh_user=centos
+ansible_ssh_pass=secret
+scp_if_ssh=True
+kube_apiserver_cert_altnames=[\"${ master_fip }\"]
+use_master_for_workloads=True
+chrony_config_server=[\"159.107.173.12\"]
+setup_chrony=True
+calico_mtu=1446
+calico_felix_ipinipmtu=1426
+#calico_ipv4pool_ipip_mode=Off
+nfs_provisioner_enabled=False
+rook_enabled=True
+rook_deploy_cluster=True
+rook_rbd_replicaSize=3
+rook_fs_replicaSize=3
+rook_rgw_replicaSize=3
+rook_rbd_storageClassName=rook-block
+
+[etcd]
+${ master_fip }
+
+[master]
+${ master_fip }
+
+[worker]
+${ worker_ip_list }
+
+[worker:vars]
+ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %h:%p -q centos@${ master_fip }\"' 

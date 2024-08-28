@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<ruleset name="ADP Rule Set" >
+    <description>ADP Portal WP Rule Set</description>
+    <file>.</file>
+
+    <arg name="extensions" value="php,inc" />
+    <arg name="report" value="summary"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <ini name="memory_limit" value="64M"/>
+
+    <autoload>../../vendor/autoload.php</autoload>
+
+     <!--
+        Include all sniffs in the PEAR standard. Note that the
+        path to the standard does not have to be specified as the
+        PEAR standard exists inside the PHP_CodeSniffer install
+        directory.
+    -->
+    <rule ref="PEAR">
+        <exclude name="PEAR.Commenting.FileComment.MissingLicenseTag"/>
+        <exclude name="PEAR.Commenting.FileComment.MissingLinkTag"/>
+        <exclude name="PEAR.Commenting.ClassComment.MissingLicenseTag"/>
+        <exclude name="PEAR.Commenting.ClassComment.MissingLinkTag"/>
+        <exclude name="PEAR.Classes.ClassDeclaration.OpenBraceNewLine"/>
+        <exclude name="PEAR.Functions.FunctionDeclaration.BraceOnSameLine"/>
+        <exclude name="PEAR.NamingConventions.ValidFunctionName.MethodDoubleUnderscore"/>
+        <exclude name="PEAR.NamingConventions.ValidVariableName.PrivateNoUnderscore"/>
+        <exclude name="PEAR.NamingConventions.ValidFunctionName.PrivateNoUnderscore"/>
+    </rule>
+
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="150"/>
+            <property name="absoluteLineLimit" value="0"/>
+        </properties>
+ </rule>
+</ruleset>

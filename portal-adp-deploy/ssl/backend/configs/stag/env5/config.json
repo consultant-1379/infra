@@ -1,0 +1,108 @@
+{
+    "siteAddress" : "https://seliius18473.seli.gic.ericsson.se:58085/api",
+    "httpPort": 8888,
+    "httpsPort": 9999,
+    "couchDB": "https://admin:#couchpass#@seliius18473.seli.gic.ericsson.se:48085",
+    "mongoDB": "mongodb://admin:#mongopass#@mongo5:27017",
+    "defaultDB":"couchDB",
+    "nodeMailer": "https://seliius18473.seli.gic.ericsson.se:58085/notify/env5/send-email",
+    "elasticUrl": "http://elasticsearch:9200/couchdb-denorm-env5/_search",
+    "elasticSearch": {
+      "address": "http://elasticsearchtest:9200",
+      "indexes": {
+          "wordpress": "seliius18473seligicericssonse23309-post-1",
+          "microservices": "microservices85",
+          "msDocumentation": "microservice-documentation85",
+          "egsSync": "egs-sync-85"
+      }
+    },
+    "masterCacheTimeOutInSeconds": {
+      "JWTStrategyHandler": 30,
+      "listOptions": 86400,
+      "listOptionsNormalised": 86400,
+      "listOptionsAdminOnly": 86400,
+      "allAssets": 86400,
+      "allAssetsNormalised": 60,
+      "msAnalytics": 60,
+      "PRAVersion": 60,
+      "marketPlaceSearch": 0.5,
+      "innersourceContribsSearch": 0.5,
+      "innersourceContribs": 0.5,
+      "msListByOwner": 0.5,
+      "searchLDAPUser": 60,
+      "tagsReload": 86400,
+      "thisUserShouldBeInDatabase": 86400,
+      "documents": 30,
+      "minimumGarbageCollectorCall": 60,
+      "complianceOptions": 86400,
+      "allusers": 30,
+      "rbacPermissionIds": 60
+    },
+    "requestTimeoutsInSeconds": {
+      "artifactoryRepo": 3
+    },
+    "wordpress": {
+      "url": "https://seliius18473.seli.gic.ericsson.se:58085/wordpress/wp-json/wp/v2/",
+      "tutorials": {
+          "link": "https://seliius18473.seli.gic.ericsson.se:58085/wordpress/wp-json/wp/v2/menu/tutorials",
+          "requestTimeOutInSeconds": 300,
+          "cacheTimeOutInSeconds": 3
+      },
+      "menus": {
+        "cacheTimeOutInSeconds": 86400,
+        "cacheOfModifiedDateTimeOutInSeconds": 10
+      }
+    },
+    "holdDocumentCacheInMemoryForXSeconds": 30,
+    "holdCacheFromDatabaseForXSeconds": 10,
+    "displayPackagesSizeOnLoad": true,
+    "saveConsoleLogInFile": false,
+    "MAIL_OPTIONS": {
+      "devMode": false
+    },
+    "ldap": {
+      "url": "ldap://mock-ldap:389",
+      "bindDN": "cn=admin,dc=example,dc=org",
+      "bindCredentials": "admin",
+      "searchBase": "dc=example,dc=org",
+      "searchFilter": "(cn={{username}})",
+      "timeout": 5000,
+      "connectTimeout": 10000,
+      "reconnect": true
+    },
+    "jwt": {
+      "secret": "#jwtsecret#"
+    },
+    "jwtIntegration": {
+      "secret": "#jwtintegrationsecret#"
+    },
+    "mssqlDB": {
+      "user":"ADP_User",
+      "password":"#tableaupass#",
+      "server":"pemdbsrvssp.internal.ericsson.com",
+      "encrypt":true,
+      "database":"BICP",
+      "trustServerCertificate": true
+    },
+    "adpHelmDataFile": "https://arm.rnd.ki.sw.ericsson.se/artifactory/proj-adp-gs-all-helm/index.yaml",
+    "azure": {
+        "url": "http://mockserver5:1080/token",
+        "grant_type": "client_credentials",
+        "resource": "10f79a15-f4e9-40f5-9a6c-44916a0e8338"
+    },
+    "contributorsStatistics": {
+      "gerritApi": "http://mockserver5:1080/a/changes/?o=DETAILED_ACCOUNTS&q=status:merged+branch:\"master\"+after:\"|||:AFTERDATE:|||+00:00:00\"+before:\"|||:BEFOREDATE:|||+23:59:59\"+project:\"|||:PROJECTNAME:|||\"",
+      "gerritPotentialTag": "http://mockserver5:1080/b/changes/?o=DETAILED_ACCOUNTS&o=CURRENT_REVISION&q=status:merged+branch:\"master\"+after:\"|||:AFTERDATE:|||+00:00:00\"+before:\"|||:BEFOREDATE:|||+23:59:59\"+message:\"innersource\"+project:\"|||:PROJECTNAME:|||\"",
+      "gerritApiRevisionDetail": "http://mockserver5:1080/c/changes/|||:COMMITID:|||/revisions/|||:COMMITREVISION:|||/commit/"
+    },
+    "peopleFinderApiUrl" : "http://mockserver5:1080/people-finder/",
+    "mockArtifactoryAddress": "https://seliius18473.seli.gic.ericsson.se:58090/notify/mockartifactory/",
+    "innersourceLaunchDate": "Thu Nov 04 2021 16:29:34 GMT+0000 (Greenwich Mean Time)",
+    "asciidoctorService": "http://dupe5asciidoctorservice:9001/",
+    "mimerServer": "http://seliius18473.seli.gic.ericsson.se:56065/mimerserver/",
+    "muninServer": "http://seliius18473.seli.gic.ericsson.se:56065/muninserver/",
+    "eridocServer": "http://seliius18473.seli.gic.ericsson.se:56065/eridocserver/",
+    "primDDServer": "http://seliius18473.seli.gic.ericsson.se:56065/primddserver/REST/G3/CICD/Document/M/",
+    "mockServer": "http://seliius18473.seli.gic.ericsson.se:56065",
+    "environmentID": "env5"
+}

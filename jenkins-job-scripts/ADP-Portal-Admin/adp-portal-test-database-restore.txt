@@ -1,0 +1,57 @@
+#!/bin/bash
+
+repo_root=${PWD}
+
+master_backup_location=/local/couchbkp/MASTER.tar.gz
+mongo_master_backup_location=/local/mongobkp/MASTER.tar.gz
+host=seliius18473.seli.gic.ericsson.se
+port_prefix=4808
+
+if [[ "${backup_target}" = "test" ]];
+then
+ database_dir=/local/data0/couchdb
+ backup_location=/local/data0/bkp_couch
+ tar_file=${master_backup_location}
+ compose_filename=docker-compose.yml
+ service_name=dupe0couchdbssl
+ mongo_service_name=mongo0
+ container_name=dupe0_adp_backend
+ database_address="https://${host}:48090"
+else
+ h=${backup_target}
+ if [[ -z "$h" ]];
+ then
+  echo "No environment chosen exiting"
+  exit 1
+ else
+  database_dir=/local/data${h}/couchdb
+  backup_location=/local/data${h}/bkp_couch
+  tar_file=${master_backup_location}
+  compose_filename=docker-compose.yml
+  service_name=dupe${h}couchdbssl
+  mongo_service_name=mongo${h}
+  container_name=dupe${h}_adp_backend
+  database_address="https://${host}:${port_prefix}${h}"
+ fi
+fi
+
+
+cd portal-adp-deploy/portal-ui-deploy/
+
+user=root
+adp_user=eadpusers
+adp_group=eusers
+keyfile=~/.ssh/id_rsa
+
+compose_location=/local/test-env-setup/
+
+if [[ "${use_test_data}" = true ]];
+then
+  ./test_data_apply.sh -u ${user} -h ${host} -k ${keyfile} -n ${container_name} -c ${compose_location} -p ${compose_filename} -s ${service_name} -q ""
+else
+  ./mongo_update.sh -u ${user} -a ${adp_user} -g ${adp_group} -h ${host} -k ${keyfile} -t ${mongo_master_backup_location} -s ${mongo_service_name} -q ""
+fi
+
+
+cd ${repo_root}
+rm -rf ./*

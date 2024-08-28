@@ -1,0 +1,4 @@
+portal_compose=test-env-setup
+nginx_scrape_uri=https://duep0-nginx/status/
+couchdb_uri=http://dupe0-couchdb-ssl:5984
+couch_pw=mysecretpassword

@@ -1,0 +1,30 @@
+{
+    "debugging": true,
+    "BASE_URL_WORDPRESS": "http://analytics.ericsson.se:23307/wp-json/wp/v2/",
+    "BASE_URL_GITLAB": "http://10.44.149.54:19080/api/v4/",
+    "BASE_URL_ZEPPELIN": "http://10.44.149.53:9090/",
+    "BASE_URL_ZEPPELIN_API": "http://10.44.149.53:9090/api/",
+    "GITLAB_TOKEN": "z9gRFErqm6X5Jx4qie2M",
+    "GITLAB_PRIVATE_TOKEN": "?private_token=z9gRFErqm6X5Jx4qie2M",
+    "LOGIN": "http://analytics.ericsson.se:23307/wp-json",
+    "DATABASE": {
+        "COUCHDB": "http://eselivm3v259l.lmera.ericsson.se:58080/datascience",
+
+        "COUCHDB_LOCAL": "http://localhost:5984/datascience"
+    },
+    "GITLAB": {
+        "USER_BY_SIGNUM": "users?username=:userid",
+        "USER_CREATE": "users%token%",
+        "PROJECTS": "projects%token%",
+        "PROJECTS_CREATE": "projects/user/:userid%token%&visibility=public",
+        "PROJECTS_USERNAME": "users%token%&username=:username",
+        "PROJECTS_USER": "users/:userid/projects%token%",
+        "FILE_CREATE": "projects/:projectid/repository/files/:filepath",
+        "FILE_DELETE": "projects/:projectid/repository/files/:filepath%token%&branch=master&commit_message=deletefile&sudo=:user",
+        "REPOSITORY": "projects/:projectid/repository/tree",
+        "REPOSITORY_FILES": "projects/:projectid/repository/tree?path=:filepath"
+    },
+    "ZEPPELIN": {
+        "CREATE": "notebook"
+    }
+}

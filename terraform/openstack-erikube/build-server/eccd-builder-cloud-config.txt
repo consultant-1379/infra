@@ -1,0 +1,92 @@
+#cloud-config
+manage_resolv_conf: true
+resolv_conf: { nameservers: ['159.107.173.12'] }
+ntp: { servers: 159.107.173.12 }
+timezone: Europe/Dublin
+ssh_pwauth: yes
+password: centos
+chpasswd: { expire: False }
+yum_repos:
+ epel:
+  baseurl: http://download.fedoraproject.org/pub/epel/7/$basearch
+  enabled: true
+  failovermethod: priority
+  gpgcheck: false
+  gpgkey: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+  name: Extra Packages for Enterprise Linux 7
+package_update: true
+ssh-authorized-keys:
+- ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC4HDH983WjZbniL57YE1SK0YpnYeuF42zvPnsworDYkZ+UMICx5GCk9nCKDhOBQ1YBwBBvNLuq9gphjRtd3HnDtnrQQS/K0DxZQXPeG6PPGLRdCyUxc6AFZPE8fasw0clPFMZ/8XClEwJYpBNdcNu3ekL46SW6bHiVoSlrOEhLyTJAs15IAaezrcFMQ+NkFnpT/lkjq9/QluCRjOSt2NLRYptzGhG3vRSGuSYwcqZ/Fvabbum/8/VFfb0ofKwvi6Nimj3Y0shUQmQk2TgMplMaHT4ZIGMgyVGAEzC6xJwgMUDzdoslHHQaX9ixz4p4gOz89PhvAaXdGEOAQc0Fdf8j centos
+package_update: true
+packages:
+- vim
+- ansible
+- git
+- tree
+- wget
+- screen
+- atop
+- iftop
+- jq
+- docker
+- docker-compose
+-  
+write_files:
+ -  content: |
+     # This file controls the state of SELinux on the system.
+     # SELINUX= can take one of these three values:
+     #     enforcing - SELinux security policy is enforced.
+     #     permissive - SELinux prints warnings instead of enforcing.
+     #     disabled - No SELinux policy is loaded.
+     SELINUX=disabled
+     # SELINUXTYPE= can take one of three two values:
+     #     targeted - Targeted processes are protected,
+     #     minimum - Modification of targeted policy. Only selected processes are protected. 
+     #     mls - Multi Level Security protection.
+     SELINUXTYPE=targeted
+
+    owner: root:root
+    path: /etc/sysconfig/selinux
+    permissions: '0644'
+write_files:
+ -  content: |
+     -----BEGIN RSA PRIVATE KEY-----
+     MIIEowIBAAKCAQEAuBwx/fN1o2W54i+e2BNUitGKZ2HrheNs7z57MKKw2JGflDCA
+     seRgpPZwig4TgUNWAcAQbzS7qvYKYY0bXdx5w7Z60EEvytA8WUFz3hujzxi0XQsl
+     MXOgBWTxPH2rMNHJTxTGf/FwpRMCWKQTXXDbt3pC+Oklumx4laEpazhIS8kyQLNe
+     SAGns63BTEPjZBZ6U/5ZI6vf0JbgkYzkrdjS0WKbcxoRt70UhrkmMHKmfxb2m27p
+     v/P1RX29KHysL4ujYpo92NLIVEJkJNk4DKZTGh0+GSBjIMlRgBMwusScIDFA83aL
+     JRx0Gl/Ysc+KeIDs/PT4bwGl3RhDgEHNBXX/IwIDAQABAoIBAQCMMLQEapEGFZzA
+     VYB/ieCTP9FCvXYo4i790bbeJtPAZMp9fZ1RV9QbaKfzB5rkj9B6zrP06dOI74ai
+     F19iTlLNqzLDRw/MQFnjoQpIcwV92ZLlUmpEyIVt9hoW9J4ZM3U1aV1o6QDcQahE
+     tNMmEJzNjiRXArk+xf/f9/Lg+N9cDI/23zwHSoK1ZxVpmvmLL59M7C0ew1+0Mh8i
+     oUdra31y0som4WtQ9FwvXwr4mSazraJMRXtS6AuxzXTqtsT97bajVwM6/bAwlfHC
+     XX1wuCJf7n/TRRBjYi4c4sFARuZF12WOLAjIiakMKyr3HPmkW9h112uj3T34HDqm
+     7RRanWT5AoGBAPQiFyYkLiPX0q04jaIVDIPYMW1U5FfWLQumKq262OK5Xl5YMYyK
+     aDhheVXN1fKQjZ5cojDZCvStXft2JqYQl31r6+zyRuWaAGiKErVQTUcdj4qAJOlK
+     rlh5rd99LbHov4vP7U9tlF1J9JH0ldXYetK0ajteKLnAah9cWM8J5y4fAoGBAMEP
+     MubiSc/QNjvGL6T3rhvJKv/EyKMH1uHuKCYBrACUcoxVcsgcW66buW7jHeYviAGD
+     gZtBBrD/qT2j+UlAxZigxXreYpVfIjtWaEOi4Tsuh7ilioAwqAdL0fGBWFuB/Twv
+     4C5Zt8d+5dsYjzPd4NhB4kYIuNxoThLjL9h4CEZ9AoGAXhIIw3yrfso59t9UzAC6
+     Ws9idFOCzUnM/7EevuTBj9OHxmjLZvEqKZd9ro9rAlWrDDt7j8ECVLe9ABlN2S2J
+     gh2kwh+1K+HEiIOzo8P2kxGT7vVjw7UwKw1v7y8H/YbG0DPlqHZ79dp6cAdD+Su6
+     YBh+2rN0k+bNvZnS6qxRNVcCgYAhmA93dbD6ZHTLefUYc7DsTNkaoJd5JwgRUGvU
+     ET5o62vzV3sdrzGU9KwTy5mMUIEOImAPMAWGDzbX7wyV3puDr5Ythz0IWQGP6b1C 
+     57jhn3smekfbfpv+iQcDS0qgwcHbE0mjRyFfqYk90sw4bkeN2gkRvrrMP6o2Ryow
+     NNLb0QKBgA+zFMGO9rpz9A4sa4vSs7rSahTSo3DJq1dVuAZmMLYtbT+4T6P+UNkP
+     tGAPfofjC12aWED5YInR/GhHEiO5YqBd30qQ4lhCqx25CLiXm7zXqkE3SK7bAsuX
+     L0zvMjwEGXDYT24yb5Uiuj1Lb6BrKN/SPaxjq/RxIteOdvDRa/3p
+     -----END RSA PRIVATE KEY-----
+
+    owner: centos:centos
+    path: /home/centos/.ssh/id_rsa
+    permissions: '0600'
+runcmd:
+- [ /sbin/setenforce, 0 ]
+- [ pip ,install ,   ]
+- [ systemctl, daemon-reload ]
+- [ systemctl, enable, docker.service ]
+- [ systemctl, start, --no-block, docker.service ]
+- [ systemctl, daemon-reload ]
+- [ systemctl, enable, docker.service ]
+- [ systemctl, start, --no-block, docker.service ]

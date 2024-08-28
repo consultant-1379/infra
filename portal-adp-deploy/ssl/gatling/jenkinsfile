@@ -1,0 +1,162 @@
+pipeline {
+    agent {
+        node {
+            label DOCKER_SLAVE
+        }
+   
+    }
+    stages {
+         stage("Setup") {
+            steps{
+                script{
+                    if (params.csv_param == null || params.csv_param == '') {
+                        env.csv_param = 'config'
+                    } else {
+                        env.csv_param = params.csv_param
+                    }
+                    if (params.branch_to_build != null) {
+                        echo "branch defined. Using a dev environment. " + params.branch_to_build + " " + " to env" + env.target_env_number
+                        env.checkout_branch=params.branch_to_build
+                        env.run_type=params.ENVIRONMENT_TYPE
+                        env.target_env_number=params.ENVIRONMENT_NUMBER
+                        env.new_version="env"+params.ENVIRONMENT_NUMBER
+                    } else {
+                        env.run_type="dev"
+                        env.target_env_number="4"
+                        env.checkout_branch="master"
+                    }
+                    envDesc = env.run_type
+                    if ( env.run_type == 'dev') {
+                        envDesc = env.run_type + env.target_env_number
+                    }
+                    currentBuild.description = "Branch: " + params.branch_to_build + ". On: " + envDesc + ". " + params.new_users_persec + " nups for " +  params.duration_secs + " secs."
+                }
+                // checkoutInfra()
+                // dir("portal-adp-deploy/portal-ui-deploy"){
+                //     loadEnvVariables(env.run_type, env.target_env_number)
+            	   //  testEnvVariables()
+                // }
+            }
+        }
+        
+        stage("Generate Test Data") {
+            when{
+                expression { ( params.SKIP_RESTORE == null || params.SKIP_RESTORE == false ) && ( params.USE_TEST_DATA == null || params.USE_TEST_DATA == true ) }
+            }
+            steps{
+                checkoutInfra()
+                dir("portal-adp-deploy/portal-ui-deploy"){
+                    generateTestData(env.run_type, env.target_env_number, params.data_microservices, params.data_users)
+                }
+            }
+        }        
+        stage("Build Image") {
+            when{
+                expression { ( params.BUILD == null || params.BUILD == true ) }
+            }
+            steps {
+                checkoutInfra()
+                dir("portal-adp-deploy/ssl/gatling/"){
+                    buildGatlingImage()
+                }
+            }
+        }  
+        stage("Performance Tests") {
+            
+            steps {
+                checkoutInfra()
+                dir("portal-adp-deploy/ssl/gatling/"){
+                    echo params.ENVIRONMENT_TYPE
+                    echo params.ENVIRONMENT_NUMBER
+                    performanceTests(params.ENVIRONMENT_TYPE, params.ENVIRONMENT_NUMBER, params.new_users_persec, params.duration_secs, params.auth_token, env.csv_param)
+                }
+            }
+            post {
+               always {
+                    archiveArtifacts artifacts: 'portal-adp-deploy/ssl/gatling/report.zip, portal-adp-deploy/ssl/gatling/conf/dynamic.csv', allowEmptyArchive: true
+               }
+            }
+        }        
+    }
+}
+
+
+def refreshDatabase(environment_type, environment_number) {
+    withEnv(["e_type=$environment_type", "e_number=$environment_number"]){
+        sh '''
+            export env_number=${e_number}
+            . ./configs/${e_type}
+            . ./configs/config_tester.sh
+
+            ./db_update.sh -u ${ssh_user} -a ${adp_user} -g ${adp_group} -h ${target_host} -k ${key_file} -d ${database_dir} -b ${backup_location} -t ${master_backup_location} -c ${compose_location} -p ${compose_filename} -s ${database_service_name} -q ""
+            sleep 15
+            /bin/cp -f ../ssl/set_user_permissions.py .
+            scp -i ${key_file} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no set_user_permissions.py ${ssh_user}@${target_host}:/tmp
+            ssh -i ${key_file} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${ssh_user}@${target_host} "python /tmp/set_user_permissions.py ${database_address}"
+        '''
+    }
+}
+
+def generateTestData(environment_type, environment_number, microservices, users) {
+    withEnv(["e_type=$environment_type", "e_number=$environment_number", "ms_count=$microservices", "user_count=$users"]){
+        sh '''
+            export env_number=${e_number}
+            . ./configs/${e_type}
+            . ./configs/config_tester.sh
+            ./test_data_apply.sh -u ${user} -h ${target_host} -k ${key_file} -n ${container_name} -c ${compose_location} -p ${compose_filename} -s ${database_service_name} -m ${ms_count} -l ${user_count}
+
+        '''
+    }
+}
+
+def buildGatlingImage() {
+    sh '''
+    ./build.sh
+    ./docker-publish.sh
+    '''
+}
+
+def performanceTests(environment_type, environment_number, new_users_persec, duration_secs, token, csv_parameter){
+    withEnv(["e_type=$environment_type", "e_number=$environment_number", "users=$new_users_persec", "duration=$duration_secs", "user_auth_token=$token", "csv_param=$csv_parameter"]){
+
+        sh '''
+            export env_number=${e_number}
+            export env_type=${e_type}
+            . ../../portal-ui-deploy/configs/${env_type}
+            . ../../portal-ui-deploy/configs/config_tester.sh
+            chmod +x setPerms.sh
+            ./setPerms.sh
+            rm -rf results/*
+            rm -rf report.zip
+            
+            if [[ "${env_type}" = dev ]]; then
+                token=${env_type}${env_number}
+            else
+                token=${env_type}
+            fi
+            echo ${token}
+            
+            echo slug > conf/dynamic.csv
+            cat ../../portal-ui-deploy/microservices-slugs.csv >> conf/dynamic.csv
+            wc -l conf/dynamic.csv
+
+            chmod +x load.sh 
+            ./load.sh ${token} ${users} ${duration} ${csv_param} ${user_auth_token}
+            ls -lrth
+            zip -r report results
+        '''
+    }
+}
+
+def checkoutInfra(){
+    checkout([$class: 'GitSCM',
+            branches: [[name: "*/$env.checkout_branch"]],
+        	userRemoteConfigs: [
+    		[name: 'gcm', url: '${GERRIT_MIRROR}/AIA/CI/infra']
+    		]
+    		])
+        sh '''
+        rm -rf dsl
+        du -sh ./*
+        '''
+}

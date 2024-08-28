@@ -1,0 +1,49 @@
+#!/bin/bash
+
+
+repo_root=${PWD}
+staging_env=seliius18473.seli.gic.ericsson.se
+new_staging_env=seliius21284.seli.gic.ericsson.se
+live_env=seliius23906.seli.gic.ericsson.se
+
+key_arg="-i /home/aiaadm100/.ssh/id_rsa"
+staging_login="root@${staging_env}"
+new_staging_login="root@${new_staging_env}"
+live_login="root@${live_env}"
+
+ssh_staging="ssh -q ${key_arg} ${staging_login}"
+ssh_live="ssh -q ${key_arg} ${live_login}"
+
+if [[ "${chosen_environment}" = "staging" ]];
+then
+	target_login=${staging_login}
+	target_location="/local/data/wordpress/html/wp-content/"
+elif [[ "${chosen_environment}" = "new_staging" ]];
+then
+	target_login=${new_staging_login}
+	target_location="/local/data/wordpress/html/wp-content/"
+elif [[ "${chosen_environment}" = "live" ]];
+then
+	target_login=${live_login}
+	target_location="/local/data/wordpress/html/wp-content/"
+else
+    # Test by default
+	target_login=${staging_login}
+	target_location="/local/data/test/wordpress/html/wp-content/"
+fi
+
+echo "host: ${target_login}"
+echo "location: ${target_location}"
+
+ssh_target="ssh -q ${key_arg} ${target_login}"
+
+wp_location="portal-adp-deploy/ssl/dev/wordpress"
+cd ${wp_location}
+./build.sh
+scp -r ${key_arg} wp.tar.gz ${target_login}:${target_location}
+${ssh_target} "cd ${target_location}; rm -rf themes/*; tar -zxvf wp.tar.gz; rm -f wp.tar.gz"
+
+
+echo DEPLOYING TO ${chosen_environment}
+
+cd ${repo_root}

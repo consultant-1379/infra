@@ -1,0 +1,61 @@
+#!/bin/bash
+
+staging_env=seliius18473.seli.gic.ericsson.se
+new_staging_env=seliius21284.seli.gic.ericsson.se
+live_env=seliius23906.seli.gic.ericsson.se
+
+key_arg="-i /home/aiaadm100/.ssh/id_rsa"
+new_staging_login="root@${new_staging_env}"
+staging_login="root@${staging_env}"
+live_login="root@${live_env}"
+
+ssh_staging="ssh -q ${key_arg} ${staging_login}"
+ssh_new_staging="ssh -q ${key_arg} ${new_staging_login}"
+ssh_live="ssh -q ${key_arg} ${live_login}"
+vact="source /local/dock-env/bin/activate"
+
+filename=config.json
+repo_root=${PWD}
+cd portal-adp-deploy/ssl/dev/
+
+if [[ "${chosen_environment}" = "test" ]];
+then
+servicename=nodemailerssltest
+node_mailer_image="armdocker.rnd.ericsson.se/aia/adp/adp-nodemailer-mock:latest"
+compose_location=/local/test-env-setup
+cd nodemailer-mock
+chmod +x ./build.sh ./publish.sh
+./build.sh
+./publish.sh
+${ssh_staging} "docker pull ${node_mailer_image}"
+${ssh_staging} "${vact};cd ${compose_location}; docker-compose stop ${servicename}; docker-compose rm -f ${servicename}; docker-compose up -d ${servicename}"
+fi
+
+
+if [[ "${chosen_environment}" = "staging" ]];
+then
+servicename=nodemailerssl
+compose_location=/local/data/compose
+scp -r ${key_arg} ./nodemailer/server.js ${staging_login}:/local/data/config/mailer/servermailer.js
+${ssh_staging} "${vact};cd ${compose_location}; docker-compose stop ${servicename}; docker-compose rm -f ${servicename}; docker-compose up -d ${servicename}"
+fi
+
+
+if [[ "${chosen_environment}" = "new_staging" ]];
+then
+servicename=nodemailerssl
+compose_location=/local/data/compose
+scp -r ${key_arg} ./nodemailer/server.js ${new_staging_login}:/local/data/config/mailer/servermailer.js
+${ssh_new_staging} "${vact};cd ${compose_location}; docker-compose stop ${servicename}; docker-compose rm -f ${servicename}; docker-compose up -d ${servicename}"
+fi
+
+if [[ "${chosen_environment}" = "live" ]];
+then
+servicename=nodemailerssl
+compose_location=/local/data/compose
+scp -r ${key_arg} ./nodemailer/server.js ${live_login}:/local/data/config/mailer/servermailer.js
+${ssh_live} "${vact};cd ${compose_location}; docker-compose stop ${servicename}; docker-compose rm -f ${servicename}; docker-compose up -d ${servicename}"
+fi
+
+cd ${repo_root}
+rm -rf ./*

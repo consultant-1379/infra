@@ -1,0 +1,13 @@
+---
+- name: Install grafana, prometheus, alertmanager
+  copy:
+    content: |
+       #!/usr/bin/bash
+       sleep 20
+       /usr/local/bin/helm repo add coreos https://s3-eu-west-1.amazonaws.com/coreos-charts/stable/
+       /usr/local/bin/helm  install coreos/prometheus-operator --name prometheus-operator --namespace monitoring
+       /usr/local/bin/helm  install coreos/kube-prometheus --name kube-prometheus --namespace monitoring
+    dest: /tmp/install-monitoring.sh
+    mode: 0777
+- shell: /tmp/install-monitoring.sh 
+

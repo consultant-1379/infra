@@ -1,0 +1,104 @@
+{
+    "siteAddress": "https://seliius18473.seli.gic.ericsson.se/api",
+    "httpPort": 8888,
+    "httpsPort": 9999,
+    "couchDB": "https://admin:#couchpass#@couchdb-ssl:6984",
+    "mongoDB": "mongodb://admin:#mongopass#@mongo:27017",
+    "defaultDB":"couchDB",
+    "nodeMailer": "https://seliius18473.seli.gic.ericsson.se/notify/send-email",
+    "elasticSearch": {
+      "address": "http://elasticsearch:9200",
+      "indexes": {
+          "wordpress": "seliius18473seligicericssonse23309-post-1",
+          "microservices": "microservices",
+          "msDocumentation": "microservice-documentation",
+          "egsSync": "egs-sync"
+      }
+    },
+    "masterCacheTimeOutInSeconds": {
+      "JWTStrategyHandler": 30,
+      "listOptions": 86400,
+      "listOptionsNormalised": 86400,
+      "listOptionsAdminOnly": 86400,
+      "allAssets": 86400,
+      "allAssetsNormalised": 60,
+      "msAnalytics": 60,
+      "PRAVersion": 60,
+      "marketPlaceSearch": 0.5,
+      "innersourceContribsSearch": 0.5,
+      "innersourceContribs": 0.5,
+      "msListByOwner": 0.5,
+      "searchLDAPUser": 60,
+      "tagsReload": 86400,
+      "thisUserShouldBeInDatabase": 86400,
+      "documents": 30,
+      "minimumGarbageCollectorCall": 60,
+      "complianceOptions": 86400,
+      "allusers": 30,
+      "rbacPermissionIds": 60
+    },
+    "requestTimeoutsInSeconds": {
+      "artifactoryRepo": 3
+    },
+    "wordpress": {
+      "url": "https://seliius18473.seli.gic.ericsson.se/wordpress/wp-json/wp/v2/",
+      "tutorials": {
+          "link": "https://seliius18473.seli.gic.ericsson.se/wordpress/wp-json/wp/v2/menu/tutorials",
+          "requestTimeOutInSeconds": 300,
+          "cacheTimeOutInSeconds": 3
+      },
+      "menus": {
+        "cacheTimeOutInSeconds": 86400,
+        "cacheOfModifiedDateTimeOutInSeconds": 10
+      }
+    },
+    "holdDocumentCacheInMemoryForXSeconds": 30,
+    "holdCacheFromDatabaseForXSeconds": 10,
+    "displayPackagesSizeOnLoad": true,
+    "saveConsoleLogInFile": false,
+    "MAIL_OPTIONS": {
+      "devMode": true
+    },
+    "ldap": {
+      "url": "ldap://ecd.ericsson.se:389",
+      "bindDN": "uid=eadphub,ou=Users,ou=Internal,o=ericsson",
+      "searchBase": "o=ericsson",
+      "searchFilter": "(cn={{username}})",
+      "timeout": 5000,
+      "connectTimeout": 10000,
+      "reconnect": true
+    },
+    "jwt": {
+      "secret": "#jwtsecret#"
+    },
+    "jwtIntegration": {
+      "secret": "#jwtintegrationsecret#"
+    },
+    "mssqlDB": {
+      "user":"ADP_User",
+      "password":"#tableaupass#",
+      "server":"pemdbsrvssp.internal.ericsson.com",
+      "encrypt":true,
+      "database":"BICP",
+      "trustServerCertificate": true
+    },
+    "azure": {
+        "url": "https://login.microsoftonline.com/92e84ceb-fbfd-47ab-be52-080c6b87953f/oauth2/token",
+        "grant_type": "client_credentials",
+        "resource": "10f79a15-f4e9-40f5-9a6c-44916a0e8338"
+    },
+    "peopleFinderApiUrl" : "https://peoplefinder.internal.ericsson.com/people-finder/people-finder/",
+    "adpHelmDataFile": "https://arm.rnd.ki.sw.ericsson.se/artifactory/proj-adp-gs-all-helm/index.yaml",
+    "contributorsStatistics": {
+        "gerritApi": "https://gerrit-gamma.gic.ericsson.se/a/changes/?o=DETAILED_ACCOUNTS&q=status:merged+branch:\"master\"+after:\"|||:AFTERDATE:|||+00:00:00\"+before:\"|||:BEFOREDATE:|||+23:59:59\"+project:\"|||:PROJECTNAME:|||\"",
+        "gerritPotentialTag": "https://gerrit-gamma.gic.ericsson.se/a/changes/?o=DETAILED_ACCOUNTS&o=CURRENT_REVISION&q=status:merged+branch:\"master\"+after:\"|||:AFTERDATE:|||+00:00:00\"+before:\"|||:BEFOREDATE:|||+23:59:59\"+message:\"innersource\"+project:\"|||:PROJECTNAME:|||\"",
+        "gerritApiRevisionDetail": "https://gerrit-gamma.gic.ericsson.se/a/changes/|||:COMMITID:|||/revisions/|||:COMMITREVISION:|||/commit/"
+    },
+    "mockArtifactoryAddress": "https://seliius18473.seli.gic.ericsson.se:58090/notify/mockartifactory/",
+    "innersourceLaunchDate": "Mon Dec 21 2020 00:00:01 GMT+0000 (Greenwich Mean Time)",
+    "asciidoctorService": "http://asciidoctorservice:9001/",
+    "mimerServer": "https://mimer.internal.ericsson.com/",
+    "muninServer": "https://munin.internal.ericsson.com/",
+    "eridocServer": "https://erid2rest.internal.ericsson.com/",
+    "primDDServer": "https://rsb.internal.ericsson.com/REST/G3/CICD/Document/M/"
+}

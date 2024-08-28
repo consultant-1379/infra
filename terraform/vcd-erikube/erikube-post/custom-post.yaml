@@ -1,0 +1,21 @@
+---
+- name: roles run on master
+  hosts: master
+  roles:
+   - install-helm
+- name:  Erikube post-steps for all
+  become: yes
+  hosts: master,worker
+  tasks: 
+   - shell: |
+      sed -e "s/--authorization-mode=Webhook/--authentication-token-webhook=true --authorization-mode=Webhook/" -i /usr/local/lib/systemd/system/kubelet.service
+      systemctl daemon-reload
+      systemctl restart kubelet
+
+   - shell: sudo modprobe rbd
+
+- name: roles run on master
+  hosts: 10.10.10.101
+  roles:
+   - install-monitoring 
+   - create-ingress 

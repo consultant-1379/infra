@@ -1,0 +1,57 @@
+[
+    {
+        "articleSlug":"adp_benefits",
+        "articleType":"page",
+        "parentSlugArray": "discover"
+    },
+    {
+        "articleSlug":"application-manager",
+        "articleType":"page",
+        "parentSlugArray": "discover"
+    },
+    {
+        "articleSlug":"adp_roadmaps",
+        "articleType":"page",
+        "parentSlugArray": "discover"
+    },
+    {
+        "articleSlug":"adp_architecture",
+        "articleType":"page",
+        "parentSlugArray": "discover"
+    },
+    {
+        "articleSlug":"development_environment",
+        "articleType":"page",
+        "parentSlugArray": "getstarted"
+    },
+    {
+        "articleSlug":"service_reuse",
+        "articleType":"page",
+        "parentSlugArray": "getstarted"
+    },
+    {
+        "articleSlug":"adp_ci",
+        "articleType":"page",
+        "parentSlugArray": "getstarted"
+    },
+    {
+        "articleSlug":"meettheteam",
+        "articleType":"page",
+        "parentSlugArray": "community"
+    },
+    {
+        "articleSlug":"supportanddiscussion",
+        "articleType":"page",
+        "parentSlugArray": "community"
+    },
+    {
+        "articleSlug":"latestnews",
+        "articleType":"page",
+        "parentSlugArray": "community"
+    },
+    {
+        "articleSlug":"gethelp",
+        "articleType":"page",
+        "parentSlugArray": "community"
+    }
+]

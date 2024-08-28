@@ -1,0 +1,74 @@
+#!/bin/bash
+
+live_host=seliius23906.seli.gic.ericsson.se
+staging_user=root
+staging_host=seliius18473.seli.gic.ericsson.se
+new_staging_host=seliius21284.seli.gic.ericsson.se
+
+cd portal-adp-deploy/portal-ui-deploy/
+
+user=root
+adp_user=eadpusers
+adp_group=users
+keyfile=~/.ssh/id_rsa
+stag_keyfile=/home/aiaadm100/.ssh/id_rsa
+backup_location=/local/backups/
+mongo_master_backup_location=/local/mongobkp/
+wp_content_backup_location=/local/wp-content-bkp/
+todays_date=$(date +%Y%m%d)
+
+ssh_to_live="ssh -i ${keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${user}@${live_host}"
+
+# Copy over backup script
+$ssh_to_live "mkdir -p /local/backups/openstack/"
+scp -i ${keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./backup-local.sh ${user}@${live_host}:/local/backups/openstack/backup-local.sh
+
+# Run backup script (Mongo only, does not cause any restarts, can be run at any time)
+## Mongo
+$ssh_to_live "sudo -S /local/backups/openstack/backup-local.sh -b ${backup_location} -a ${adp_user} -g ${adp_group}"
+## WP Content
+$ssh_to_live "cd /local/data/wordpress; tar -zcf wp-content-bkp-${todays_date}.tar.gz html"
+## WP Database
+${ssh_to_live} "docker exec wp-mysql-ssl /usr/bin/mysqldump --user=root --password=my-secret-pw wordpress > wordpress-backup-${todays_date}.sql; pwd; ls -l"
+
+
+# Copy the backup to local fs
+rm -rf ./*tar.gz
+rm -f ./wordpress-backup-*.sql
+echo "scp -i ${keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${user}@${live_host}:${backup_location}mongodb-backup-$(date +%Y%m%d).tar.gz ."
+scp -i ${keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${user}@${live_host}:${backup_location}mongodb-backup-$(date +%Y%m%d).tar.gz .
+echo "Backed up..."
+ls ./mongo*tar.gz
+mongo_backup_file=$(ls -t ./mongo*tar.gz | head -1)
+scp -i ${keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${user}@${live_host}:/local/data/wordpress/wp-content-bkp-${todays_date}.tar.gz .
+$ssh_to_live "rm -f /local/data/wordpress/wp-content-bkp-${todays_date}.tar.gz html"
+scp -i ${keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "${user}@${live_host}:/root/wordpress-backup-${todays_date}.sql" ./wordpress-backup-${todays_date}.sql
+$ssh_to_live "rm -f /root/wordpress-backup-${todays_date}.sql"
+
+# Send backup to test server
+ssh_to_stage="ssh -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${staging_user}@${staging_host}"
+$ssh_to_stage "rm -rf ${mongo_master_backup_location}/MASTER*"
+$ssh_to_stage "mkdir -p ${mongo_master_backup_location}; mkdir -p /local/wordpress-backup/"
+echo "scp -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${mongo_backup_file} ${staging_user}@${staging_host}:${mongo_master_backup_location}/MASTER.tar.gz"
+scp -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${mongo_backup_file} ${staging_user}@${staging_host}:${mongo_master_backup_location}/MASTER.tar.gz
+scp -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./wordpress-backup-${todays_date}.sql ${staging_user}@${staging_host}:/local/wordpress-backup/wordpress-backup.sql
+
+
+# Send backups to new staging server
+ssh_to_stage="ssh -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${staging_user}@${new_staging_host}"
+$ssh_to_stage "rm -rf ${mongo_master_backup_location}/MASTER*"
+$ssh_to_stage "mkdir -p ${mongo_master_backup_location}"
+$ssh_to_stage "mkdir -p ${wp_content_backup_location}"
+echo "scp -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${mongo_backup_file} ${staging_user}@${new_staging_host}:${mongo_master_backup_location}/MASTER.tar.gz"
+scp -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${mongo_backup_file} ${staging_user}@${new_staging_host}:${mongo_master_backup_location}/MASTER.tar.gz
+scp -i ${stag_keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./wp-content-bkp-${todays_date}.tar.gz ${staging_user}@${new_staging_host}:${wp_content_backup_location}/wp-content-bkp-${todays_date}.tar.gz
+rm -f ./wp-content-bkp-${todays_date}.tar.gz
+
+# Remove wordpress content backups over 7 days old.
+$ssh_to_stage "find ${wp_content_backup_location}/wp-content-bkp* -mtime +7 -exec rm {} \;"
+
+# Create a copy of latest MongoDB dump file with today's date in new staging server location
+$ssh_to_stage "cp ${mongo_master_backup_location}/MASTER.tar.gz ${mongo_master_backup_location}/mongo_db_backup-${todays_date}.tar.gz"
+
+#Remove any copy of MongoDB dump taken previously (older than 10 days)
+$ssh_to_stage "find ${mongo_master_backup_location}/mongo_db_backup* -mtime +10 -exec rm {} \;"

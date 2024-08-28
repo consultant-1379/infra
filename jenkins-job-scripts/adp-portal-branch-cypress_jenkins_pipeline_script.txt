@@ -1,0 +1,95 @@
+pipeline { 
+    agent {
+        node {
+            label DOCKER_SLAVE
+        }
+   
+    }
+    environment {
+        client_id = "42b0a05a-2867-4dbd-8eb3-451d9eca5059"
+        portal_functional = credentials('eadphub-psw')
+        jwt_integration_secret = '' // credentials('adp_portal_jwt_integration_secret')
+        jwt_secret = '' //credentials('adp_portal_jwt_secret')
+        azure_secret = credentials('adp_portal_test_azure_secret')
+    }
+    stages {
+        stage("Frontend Checkout") {
+            steps {
+                dir('adp'){
+                    checkoutFrontend()
+                    script {
+                        env.new_version='env'+env.target_environment
+                    }
+                    
+                }
+            }
+        }
+        stage("Build Cypress Testware Image") {
+            when{
+                expression { params.SKIP_CYPRESS_E2E == null || params.SKIP_CYPRESS_E2E == false }
+            }
+            
+            steps {
+                dir('adp/e2e/cypress-test') {
+                    sh '''
+                    ./build.sh $new_version
+                    # Only need to push if the testware is running from somewhere other than slave
+                    # ./publish.sh $new_version
+                    '''
+                }
+            }
+        }
+        stage("Cypress E2E Tests") {
+            when{
+                expression { params.SKIP_CYPRESS_E2E == null || params.SKIP_CYPRESS_E2E == false }
+            }
+            parallel {
+                stage('Cypress runner 1') {
+                    steps {
+                        
+                        dir('adp/e2e/cypress-test'){
+                            sh '''
+                            ./run-tests.sh branch-pipeline-${target_environment} ${new_version} ${BUILD_NUMBER} 1 5808${target_environment} env${target_environment}
+                            '''
+                        }
+                    }
+                }
+                // second tester runs the same command
+                stage('Cypress runner 2') {
+                    steps {
+                        
+                        dir('adp/e2e/cypress-test'){
+                            sh '''
+                            ./run-tests.sh branch-pipeline-${target_environment} ${new_version} ${BUILD_NUMBER} 2 5808${target_environment} env${target_environment}
+                            '''
+                        }
+                    }
+                }
+                stage('Cypress runner 3') {
+                    steps {
+                        
+                        dir('adp/e2e/cypress-test'){
+                            sh '''
+                            ./run-tests.sh branch-pipeline-${target_environment} ${new_version} ${BUILD_NUMBER} 3 5808${target_environment} env${target_environment}
+                            '''
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts 'adp/e2e/cypress-test/junit-reports/**/*.xml'
+                }
+            }
+    
+        }
+    }
+}
+
+def checkoutFrontend() {
+    checkout([$class: 'GitSCM', branches: [[name: "*/${branch_to_build}"]],
+                    userRemoteConfigs: [
+                    [name: 'gcm', url: '${GERRIT_MIRROR}/AIA/ui/adp']
+                    ]
+                    ])
+}

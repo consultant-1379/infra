@@ -1,0 +1,30 @@
+version: '2.1'
+
+networks:
+  monitor-net:
+    external:
+      name: prometheus_monitor-net
+  portal-network:
+    external:
+      name: ${portal_compose}_portal-network
+
+services:
+
+  couchexportertest:
+    image: gesellix/couchdb-prometheus-exporter:26
+    container_name: couchexportertest
+    command:
+      - '--couchdb.uri=${couchdb_uri}'
+      - '--logtostderr'
+      - '--databases=_all_dbs'
+      - '--couchdb.username=admin'
+      - '--couchdb.password=${couch_pw}'
+    ports:
+      - "9985:9984"
+    networks:
+      - monitor-net
+      - portal-network
+    labels:
+      org.label-schema.group: "monitoring"
+    restart: unless-stopped
+

@@ -1,0 +1,81 @@
+pipeline {
+    agent {
+	node {
+            label 'bob'
+        }
+    }
+    parameters {
+        choice(
+            name: "type_of_build",
+            choices:"dev\nproduction",
+            description:"Choose build type!")
+        string(
+            name : "VM_IP",
+            defaultValue:"10.44.149.101",
+            description:"VM to run test")
+    }
+    environment {
+        NG_BUILD = "docker run --rm -v ${env.WORKSPACE}/dsl/dsl:/dsl -w /dsl armdocker.rnd.ericsson.se/aia/dsl/angular-cli-dsl:0.0.1 /bin/sh -c" 
+    }
+    stages {
+        stage('Clean') {
+            steps {
+                echo 'Cleaning..'
+            }
+        }
+        stage ('Prepare Environment') {
+            steps {
+                echo "preparing environment"
+                sh 'cd dsl && git clone ssh://gerrit-gamma.gic.ericsson.se:29418/AIA/ui/dsl'
+                sh 'cd dsl/dsl && git checkout dsl2'
+            }
+        }
+        
+        stage ('Build') {
+            steps {
+                echo 'building now!'
+                sh 'cd dsl/dsl && ${NG_BUILD} "npm install; ng build"'
+                //sshagent (credentials: ['ubuntu-ssh']) {
+                //    sh 'ssh ubuntu@10.44.149.101 "cd test-area; jenkins-scripts/build-app.sh -p"'
+                //}
+            }
+        }
+        stage('Test') {
+            parallel {
+                stage('Unit test') {
+                    steps{
+                        sh '${NG_BUILD} "ng test --watch=false --browsers HeadlessChrome"'
+                    }
+                }
+                stage('End to end test') {
+                    steps{
+                        sh '${NG_BUILD} "ng e2e"'
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo "Deploying!"
+                sh 'cd dsl/jenkins-scripts && ./deploy-start.sh $VM_IP'
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "Cleaning up environment"
+            sh "docker rmi armdocker.rnd.ericsson.se/aia/dsl/angular-cli-dsl:0.0.1"
+            cleanWs()
+        }
+        success {
+            echo "this block will only run when it's a success!"
+        }
+        failure {
+            echo "this block will only run when the build fails!"
+        }
+        changed {
+            echo "this block will only run when the build stae is changed!"
+        }
+    }
+}

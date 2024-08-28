@@ -1,0 +1,180 @@
+dn: cn=etesuse,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Test User,etesuse
+uid: etesuse
+userPassword: test-password1
+mail: test-user@adp-test.com
+eriBirthName: Test
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=esupuse,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Super User,esupuse
+uid: esupuse
+userPassword: super-password1
+mail: super-user@adp-test.com
+eriBirthName: Super
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=emesuse,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Messy User,emesuse
+uid: emesuse
+userPassword: 漢字!"£$%^&*(){}[]#~'@;:<></>|\\n.,`¬€
+mail: messy-user@adp-test.com
+eriBirthName: Messy
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543212
+
+dn: cn=etesuse2,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: OtherTest User,etesuse2
+uid: etesuse2
+userPassword: test-password2
+mail: test-user2@adp-test.com
+eriBirthName: OtherTest
+eriSn: User2
+sn: User2
+
+dn: cn=epesuse,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Pest User,epesuse
+uid: epesuse
+userPassword: test-password1
+mail: pest-user@adp-test.com
+eriBirthName: Pest
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=etesase,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Sase User,etesase
+uid: etesase
+userPassword: test-password1
+mail: sase-user@adp-test.com
+eriBirthName: Sase
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=eterase,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Rase User,eterase
+uid: eterase
+userPassword: test-password1
+mail: rase-user@adp-test.com
+eriBirthName: Rase
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=etasase,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Asase User,etasase
+uid: etasase
+userPassword: test-password1
+mail: asase-user@adp-test.com
+eriBirthName: Asase
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=etarase,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Arase User,etarase
+uid: etarase
+userPassword: test-password1
+mail: arase-user@adp-test.com
+eriBirthName: Arase
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=etapase,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Apase User,etapase
+uid: etapase
+userPassword: test-password1
+mail: apase-user@adp-test.com
+eriBirthName: Apase
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=etapaze,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Apaze User,etapaze
+uid: etapaze
+userPassword: test-password1
+mail: apaze-user@adp-test.com
+eriBirthName: Apaze
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=rtesuse,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Rtest User,rtesuse
+uid: rtesuse
+userPassword: test-password1
+mail: rtest-user@adp-test.com
+eriBirthName: Rtest
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=dmapuse,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Dmap User,dmapuse
+uid: dmapuse
+userPassword: test-password1
+mail: dmap-user@adp-test.com
+eriBirthName: Dmap
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210
+
+dn: cn=wtesuse,dc=example,dc=org
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: extensibleObject
+cn: Wtest User,wtesuse
+uid: wtesuse
+userPassword: test-password1
+mail: wtest-user@adp-test.com
+eriBirthName: Wtest
+eriSn: User
+sn: User
+eriTelephoneNumber: +35390543210

@@ -1,0 +1,48 @@
+{
+    "debugging": true, 
+    "WORDPRESS": {
+        "CATEGORY": "posts?categories=:catid&per_page=100", 
+        "SEARCH": "search/:keyword", 
+        "USERS": "users?per_page=100", 
+        "AUTHOR": "users?slug=:signum", 
+        "DOC": "pages?slug=:docname", 
+        "BLOGS": "posts?per_page=50", 
+        "POSTS": "posts", 
+        "CREATE_PAGE": "pages", 
+        "SEARCHPOSTS": "posts?per_page=100&search=:keyword", 
+        "SAVEPOST": "posts", 
+        "BLOG": "posts/:id", 
+        "MENUS": "pages?slug=portal_menus", 
+        "PARENT_EXIDS": "pages?parent=:pid:ids", 
+        "CATEGORIES": "categories?parent=:parent", 
+        "PAGE_STATUS": "pages/:id?status=:status", 
+        "DOC_PREVIEW": "pages/:id/revisions/?_wpnonce=:nonce", 
+        "NEWS": "posts?categories=35&per_page=50", 
+        "PAGE": "pages/:id", 
+        "CATEGORIES_ALL": "categories?per_page=100", 
+        "USER": "users/:userid"
+    }, 
+    "NOTIFICATION": "https://131.160.143.86:58084/notify/send-email", 
+    "API_ENDPOINTS": {
+        "COUCHDB": "https://131.160.143.86:58084/database/adp"
+    }, 
+    "GERRIT": {
+        "DOC": "https://131.160.143.86:58084/gerrit/http://gerrit-gamma.gic.ericsson.se/a/projects/:project/branches/master/files/:file/content"
+    }, 
+    "DEV": "131.160.143.86:58084", 
+    "ELASTICSEARCH": "https://131.160.143.86:9200", 
+    "PORTAL_API": "https://131.160.143.86:58084/api", 
+    "LOGIN": "https://131.160.143.86:58084/wordpress/wp-json", 
+    "MAIL_OPTIONS": {
+        "toList": [
+            "mari.koskinen@ericsson.com", 
+            "neal.parikh@ericsson.com", 
+            "michael.seidel@ericsson.com", 
+            "monica.hatlen@ericsson.com", 
+            "magnus.harnesk@ericsson.com"
+        ], 
+        "from": "adp.portal.mailer@ericsson.com", 
+        "devMode": false
+    }, 
+    "BASE_URL_WORDPRESS": "https://131.160.143.86:58084/wordpress/wp-json/wp/v2/"
+}

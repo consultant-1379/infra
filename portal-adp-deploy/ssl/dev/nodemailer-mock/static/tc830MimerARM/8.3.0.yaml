@@ -1,0 +1,11 @@
+version: 8.3.0
+documents:
+ - name: Inner Source README 
+   filepath: '8.3.0/CAS_Deployment_Guide.zip'
+   default: true
+ - name: User Guide
+   filepath: '8.3.0/test.html'
+ - name: Contributing Guideline
+   filepath: '8.3.0/test.html'
+ - name: An External
+   external-link: https://www.ericsson.se

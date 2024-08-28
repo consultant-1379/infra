@@ -1,0 +1,26 @@
+global:
+     smtp_smarthost: 'smtp.internal.ericsson.com:25'
+     smtp_from: 'adp-portal-mailer@ericsson.com'
+     smtp_require_tls: false
+route:
+    receiver: 'heimdall-email'
+    group_by: ['alertname', 'service']
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 3h
+
+receivers:
+    - name: 'heimdall-email'
+      email_configs:
+          - send_resolved: true
+            to: "heimdall@ammeon.com"
+            headers:
+              subject: '[{{ .CommonLabels.monitor }}] [{{ .CommonLabels.severity }}] [{{ .GroupLabels.alertname }}] [{{ .Status | toUpper }} {{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]'
+        
+    - name: 'slack'
+      slack_configs:
+          - send_resolved: true
+            text: "{{ .CommonAnnotations.description }}"
+            username: 'Prometheus'
+            channel: '#<channel-name>'
+            api_url: 'https://hooks.slack.com/services/<webhook-id>'

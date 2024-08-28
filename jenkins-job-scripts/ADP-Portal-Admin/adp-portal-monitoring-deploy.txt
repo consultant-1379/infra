@@ -1,0 +1,75 @@
+#!/bin/bash
+
+repo_root=${PWD}
+if [[ "${chosen_environment}" = "live" ]];
+then
+target_host=seliius23906.seli.gic.ericsson.se
+elif [[ "${chosen_environment}" = "new_staging" ]];
+then
+target_host=seliius21284.seli.gic.ericsson.se
+else
+target_host=seliius18473.seli.gic.ericsson.se
+fi
+
+
+
+echo ${target_host}
+
+host_user=root
+adp_user=ejohdol
+adp_group=eusers
+
+
+monitoring_location=/local/monitoring
+compose_location=${monitoring_location}/prometheus
+
+testenv=${host_user}@${target_host}
+
+scp_cmd="scp -i /home/aiaadm100/.ssh/id_rsa"
+ssh_cmd="ssh -i /home/aiaadm100/.ssh/id_rsa ${testenv}"
+vact="source /local/dock-env/bin/activate"
+update_config="sed -i 's/docker-host-alpha/${chosen_environment}/g' prometheus/prometheus.yml"
+echo $update_config
+
+cd portal-adp-deploy/ssl/
+rm -f prom.tar
+tar -cvf prom.tar prometheus
+
+${ssh_cmd} "mkdir -p ${monitoring_location}" 
+${scp_cmd} prom.tar ${testenv}:${monitoring_location}
+
+if [[ "${chosen_operation}" = "build" ]];
+then
+cd prometheus/images
+./build.sh
+./publish.sh
+fi
+
+if [[ "${chosen_operation}" = "fullRedeploy" ]];
+then
+${ssh_cmd} "cat ~/.docker/config.json"
+${ssh_cmd} "cd ${monitoring_location};${vact};tar -xvf prom.tar;cd prometheus;./setup.sh;docker-compose down;sleep 10;${update_config};docker-compose up -d"
+fi
+
+if [[ "${chosen_operation}" = "stop" ]];
+then
+${ssh_cmd} "cd ${monitoring_location};${vact};cd prometheus;docker-compose down;cd prometheus/test docker-compose down"
+fi
+
+if [[ "${chosen_operation}" = "stop_alerts" ]];
+then
+${ssh_cmd} "cd ${monitoring_location};${vact};cd prometheus;docker-compose stop alertmanager"
+fi
+
+if [[ "${chosen_operation}" = "start_alerts" ]];
+then
+${ssh_cmd} "cd ${monitoring_location};${vact};cd prometheus;docker-compose up -d alertmanager"
+fi
+
+if [[ "${chosen_operation}" = "updateConfig" ]];
+then
+${ssh_cmd} "cd ${monitoring_location};${vact};tar -xvf prom.tar;cd prometheus;${update_config};docker-compose restart prometheus alertmanager"
+fi
+
+cd ${repo_root}
+rm -rf ./*

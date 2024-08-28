@@ -1,0 +1,49 @@
+---
+- name: Create ingress object for grafana 
+  copy:
+    content: |
+       apiVersion: extensions/v1beta1
+       kind: Ingress
+       metadata:
+         labels:
+           app: kube-prometheus-grafana
+         name: kube-prometheus-grafana
+         namespace: monitoring
+       spec:
+         rules:
+         - host: pm.{{ lb_fqdn }}
+           http:
+            paths:
+            - backend:
+                serviceName: kube-prometheus-grafana
+                servicePort: 80
+              path: /
+    dest: /tmp/kube-prometheus-grafana-ingress.yaml
+    mode: 0777
+- name: Create ingress object for alertmanager 
+  copy:
+    content: |
+       apiVersion: extensions/v1beta1
+       kind: Ingress
+       metadata:
+         labels:
+           app: kube-prometheus-alertmanager
+         name: kube-prometheus-alertmanager
+         namespace: monitoring
+       spec:
+         rules:
+         - host: fm.{{ lb_fqdn }}
+           http:
+            paths:
+            - backend:
+                serviceName: kube-prometheus-alertmanager
+                servicePort: 9093
+              path: /
+    dest: /tmp/kube-prometheus-alertmanager-ingress.yaml
+    mode: 0777
+- shell: kubectl apply -f /tmp/kube-prometheus-grafana-ingress.yaml 
+  become_user: centos
+- shell: kubectl apply -f /tmp/kube-prometheus-alertmanager-ingress.yaml 
+  become_user: centos
+
+

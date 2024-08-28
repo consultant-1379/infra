@@ -1,0 +1,4 @@
+version: 888.677.99
+documents:
+ - name: test
+   external-link: 'adp.ericsson.se'

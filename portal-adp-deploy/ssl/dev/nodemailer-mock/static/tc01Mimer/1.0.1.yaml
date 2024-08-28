@@ -1,0 +1,9 @@
+version: 1.0.1
+documents:
+ - name: Secure Coding Report
+   filepath: '1.0.1/CAS_Deployment_Guide.zip'
+   default: true
+ - name: Sample 2
+   filepath: '1.0.1/test.html'
+ - name: An External
+   external-link: https://www.ericsson.se

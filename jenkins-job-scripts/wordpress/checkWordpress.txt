@@ -1,0 +1,16 @@
+#!/bin/bash
+testImg="armdocker.rnd.ericsson.se/aia/adp/portal-wordpress-test"
+workDir="/app/themes/adp-portal"
+reportPath="${workDir}/api-tests/integration-tests"
+
+target_env=seliius18473.seli.gic.ericsson.se
+target_port=58090  
+
+base_url="https://${target_env}:${target_port}/wordpress/wp-json/wp/v2/"
+echo "Env ${base_url}"
+
+cd portal-adp-deploy/ssl/dev/wordpress/src/themes/adp-portal
+
+echo "TEST_ENV_VERSION:${version:-latest}"
+docker pull -f ${testImg}:${version:-latest}
+docker run -e TestServerUrl=${base_url} -v ${PWD}:${workDir} -w ${workDir} ${testImg} /app/vendor/bin/phpunit --testdox --log-junit ${reportPath}/report.xml --testdox-html ${reportPath}/report.html

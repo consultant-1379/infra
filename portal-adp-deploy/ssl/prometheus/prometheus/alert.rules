@@ -1,0 +1,242 @@
+groups:
+- name: targets
+  rules:
+  - alert: monitor_service_down
+    expr: up == 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Monitor service non-operational"
+      description: "Service {{ $labels.instance }} is down."
+
+- name: host
+  rules:
+  - alert: high_cpu_load
+    expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 50
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Server under high load"
+      description: "Docker host is under high load, the avg load 1m is at {{ $value}}. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+  - alert: high_memory_load
+    expr: (sum(node_memory_MemTotal_bytes) - sum(node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes) ) / sum(node_memory_MemTotal_bytes) * 100 > 85
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Server memory is almost full"
+      description: "Docker host memory usage is {{ humanize $value}}%. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+  - alert: high_root_storage_load
+    expr: (node_filesystem_size_bytes{fstype="rootfs"} - node_filesystem_free_bytes{fstype="rootfs"}) / node_filesystem_size_bytes{fstype="rootfs"}  * 100 > 90
+    for: 300s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Server storage is almost full"
+      description: "Docker host storage usage is {{ humanize $value}}%. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+  - alert: high_root_storage_load_75
+    expr: (node_filesystem_size_bytes{fstype="rootfs"} - node_filesystem_free_bytes{fstype="rootfs"}) / node_filesystem_size_bytes{fstype="rootfs"}  * 100 > 75
+    for: 300s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Server storage usage is high"
+      description: "Docker host storage usage is {{ humanize $value}}%. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+  - alert: root_storage_50
+    expr: (node_filesystem_size_bytes{fstype="rootfs"} - node_filesystem_free_bytes{fstype="rootfs"}) / node_filesystem_size_bytes{fstype="rootfs"}  * 100 > 50
+    for: 300s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Server storage is moderate"
+      description: "Docker host storage usage is {{ humanize $value}}%. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+  - alert: high_extended_storage_load
+    expr: (node_filesystem_size_bytes{mountpoint="/local"} - node_filesystem_free_bytes{mountpoint="/local"}) / node_filesystem_size_bytes{mountpoint="/local"}  * 100 > 90
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Extended storage usage is almost full"
+      description: "Docker host storage usage is {{ humanize $value}}%. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+  - alert: high_extended_storage_load_75
+    expr: (node_filesystem_size_bytes{mountpoint="/local"} - node_filesystem_free_bytes{mountpoint="/local"}) / node_filesystem_size_bytes{mountpoint="/local"}  * 100 > 75
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Extended storage usage is high"
+      description: "Docker host storage usage is {{ humanize $value}}%. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+  - alert: free_swap
+    expr: (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes  * 100 > 70
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Server swap memory is almost full"
+      description: "Docker host swap usage is {{ humanize $value}}%. Reported by instance {{ $labels.instance }} of job {{ $labels.job }}."
+
+- name: containers
+  rules:
+  - alert: mailer_down
+    expr: absent(container_memory_usage_bytes{name="nodemailer-ssl"})
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Mailer down"
+      description: "Mailer container is down for more than 30 seconds."
+
+  - alert: mailer_high_cpu
+    expr: sum(rate(container_cpu_usage_seconds_total{name="nodemailer-ssl"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 10
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Mailer high CPU usage"
+      description: "Mailer CPU usage is {{ humanize $value}}%."
+
+  - alert: mailer_high_memory
+    expr: sum(container_memory_usage_bytes{name="nodemailer-ssl"}) > 1200000000
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Mailer high memory usage"
+      description: "Mailer memory consumption is at {{ humanize $value}}."
+
+
+  - alert: backend_down
+    expr: absent(container_memory_usage_bytes{name="adp_backend"})
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Portal backend down"
+      description: "Portal backend container is down for more than 30 seconds."
+
+  - alert: backend_high_cpu_50
+    expr: sum(rate(container_cpu_usage_seconds_total{name="adp_backend"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 50
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Portal backend high CPU usage"
+      description: "Portal backend CPU usage is {{ humanize $value}}%."
+
+  - alert: backend_high_cpu_80
+    expr: sum(rate(container_cpu_usage_seconds_total{name="adp_backend"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 80
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Portal backend high CPU usage"
+      description: "Portal backend CPU usage is {{ humanize $value}}%."
+
+  - alert: backend_high_cpu_95
+    expr: sum(rate(container_cpu_usage_seconds_total{name="adp_backend"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 95
+    for: 5s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Portal backend high CPU usage"
+      description: "Portal backend CPU usage is {{ humanize $value}}%."
+
+  - alert: backend_high_memory_3000
+    expr: sum(container_memory_usage_bytes{name="adp_backend"}) > 3000000000
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Portal backend high memory usage"
+      description: "Portal backend memory consumption is at {{ humanize $value}}."
+
+  - alert: wordpress_down
+    expr: absent(container_memory_usage_bytes{name="wordpress-ssl"})
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Wordpress down"
+      description: "Wordpress container is down for more than 30 seconds."
+
+  - alert: wordpress_high_cpu
+    expr: sum(rate(container_cpu_usage_seconds_total{name="wordpress-ssl"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 30
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Wordpress high CPU usage"
+      description: "Wordpress CPU usage is {{ humanize $value}}%."
+
+  - alert: wordpress_high_memory
+    expr: sum(container_memory_usage_bytes{name="wordpress-ssl"}) > 1200000000
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Wordpress high memory usage"
+      description: "Wordpress memory consumption is at {{ humanize $value}}."
+
+  - alert: mysql_down
+    expr: absent(container_memory_usage_bytes{name="wp-mysql-ssl"})
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "MySQL down"
+      description: "MySQL container is down for more than 30 seconds."
+
+  - alert: mysql_high_cpu
+    expr: sum(rate(container_cpu_usage_seconds_total{name="wp-mysql-ssl"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 10
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "MySQL high CPU usage"
+      description: "MySQL CPU usage is {{ humanize $value}}%."
+
+  - alert: mysql_high_memory
+    expr: sum(container_memory_usage_bytes{name="wp-mysql-ssl"}) > 1200000000
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "MySQL high memory usage"
+      description: "MySQL memory consumption is at {{ humanize $value}}."
+
+
+  - alert: nginx_down
+    expr: absent(container_memory_usage_bytes{name="nginx-portal-content-ssl"})
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "nginx down"
+      description: "nginx container is down for more than 30 seconds."
+
+  - alert: nginx_high_cpu
+    expr: sum(rate(container_cpu_usage_seconds_total{name="nginx-portal-content-ssl"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 10
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "nginx high CPU usage"
+      description: "nginx CPU usage is {{ humanize $value}}%."
+
+  - alert: nginx_high_memory
+    expr: sum(container_memory_usage_bytes{name="nginx-portal-content-ssl"}) > 1200000000
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "nginx high memory usage"
+      description: "nginx memory consumption is at {{ humanize $value}}."

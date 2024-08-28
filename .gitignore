@@ -1,0 +1,5 @@
+node_modules
+*.swp
+*.zip
+*.tar.gz
+*.just.a.test

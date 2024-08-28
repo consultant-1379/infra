@@ -1,0 +1,9 @@
+version: 8.2.9
+documents:
+ - name: PRI
+   filepath: '8.2.9/CAS_Deployment_Guide.zip'
+   default: true
+ - name: Sample 2
+   filepath: '8.2.9/test.html'
+ - name: An External
+   external-link: https://www.ericsson.se

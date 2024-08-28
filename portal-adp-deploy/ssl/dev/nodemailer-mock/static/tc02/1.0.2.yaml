@@ -1,0 +1,10 @@
+version: 1.0.2
+documents:
+ - name: Sample 3
+   filepath: '1.0.2/CAS_Deployment_Guide.zip'
+ - name: Sample 4
+   filepath: '1.0.2/test.html'
+ - name: Sample 5
+   filepath: '1.0.2/other.html'
+ - name: An External 2
+   external-link: https://www.ericsson.se

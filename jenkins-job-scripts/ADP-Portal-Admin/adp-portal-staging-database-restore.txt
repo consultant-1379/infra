@@ -1,0 +1,39 @@
+#!/bin/bash
+
+repo_root=${PWD}
+
+# Common variables
+mongo_master_backup_location=/local/mongobkp/MASTER.tar.gz
+compose_location=/local/data/compose/
+compose_filename=docker-compose.yml
+container_name=adp_backend
+mongo_service_name=mongo
+user=root
+adp_user=eadpusers
+adp_group=eusers
+keyfile=~/.ssh/id_rsa
+
+
+old_host=seliius18473.seli.gic.ericsson.se
+new_host=seliius21284.seli.gic.ericsson.se
+
+host=${new_host}
+
+if [[ "${backup_target}" = "stage" ]];
+then
+ host=${old_host}
+fi
+
+cd portal-adp-deploy/portal-ui-deploy/
+
+
+if [[ "${use_test_data}" = true ]];
+then
+  ./test_data_apply.sh -u ${user} -h ${host} -k ${keyfile} -n ${container_name} -c ${compose_location} -p ${compose_filename} -s ${mongo_service_name} -q ""
+else
+  ./mongo_update.sh -u ${user} -a ${adp_user} -g ${adp_group} -h ${host} -k ${keyfile} -t ${mongo_master_backup_location} -s ${mongo_service_name} -q ""
+fi
+
+
+cd ${repo_root}
+rm -rf ./*

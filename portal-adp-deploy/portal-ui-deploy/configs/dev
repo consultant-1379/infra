@@ -1,0 +1,36 @@
+number=${env_number:-0}
+
+user=root
+target_host=seliius18473.seli.gic.ericsson.se
+adp_user=eadpusers
+adp_group=eusers
+testenv=${user}@${target_host}
+key_file=~/.ssh/id_rsa
+
+env_file=/local/test-env-setup/.env
+compose_location=/local/test-env-setup/
+service_name=dupe${number}adpbackend
+deployable_services="dupe${number}adpbackend dupe${number}adpbackendworker dupe${number}asciidoctorservice"
+container_name=dupe${number}_adp_backend
+nginx_service=dupe${number}nginxssl
+restart_nginx=true
+version_key=BACKEND_VERSION${number}
+
+adp_folder=/local/data${number}/adp
+adp_bkp=/local/adp-backup${number}
+env_json=p${number}.json
+
+master_backup_location=/local/couchbkp/MASTER.tar.gz
+database_dir=/local/data${number}/couchdb
+backup_location=/local/data${number}/bkp_couch
+compose_filename=docker-compose.yml
+database_service_name=dupe${number}couchdbssl
+database_address="https://${target_host}:4808${number}"
+
+mongo_master_backup_location=/local/mongobkp/MASTER.tar.gz
+mongo_database_dir=/local/data${number}/mongodb
+mongo_backup_location=/local/data${number}/bkp_mongo
+mongo_database_service_name=dupe${number}mongo
+mongo_database_address="https://${target_host}:270`expr $number + 18`"
+
+baseurl="https://seliius18473.seli.gic.ericsson.se:5808${number}/"

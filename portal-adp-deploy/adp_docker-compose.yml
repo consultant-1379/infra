@@ -1,0 +1,78 @@
+version: '2'
+services:
+   mariadb:
+     image: mariadb
+     container_name: wp-mysql
+     volumes:
+       - /local/data/wordpress/mysql:/var/lib/mysql
+     ports:
+       - "23306:3306"
+     restart: always
+     environment:
+       MYSQL_ROOT_PASSWORD: my-secret-pw
+       MYSQL_DATABASE: wordpress
+       MYSQL_USER: root
+       MYSQL_PASSWORD: my-secret-pw
+   wordpress:
+     depends_on:
+       - mariadb
+     links:
+       - mariadb
+     image: aia-wordpress
+     container_name: wordpress
+     volumes:
+       - /local/data/wordpress/html:/var/www/html
+     ports:
+       - "23307:80"
+     restart: always
+     environment:
+       WORDPRESS_DB_PASSWORD: wordpress
+       WORDPRESS_DB_USER: root
+       WORDPRESS_DB_PASSWORD: my-secret-pw
+       WORDPRESS_DB_HOST: mariadb
+   nginx:
+     image: nginx
+     container_name: nginx-portal-content
+     links:
+       - wordpress
+       - corsproxy
+     volumes:
+       - /local/data/adp/:/usr/share/nginx/html
+     ports:
+       - "7001:80"
+     restart: always
+     environment:
+       host: 150.132.77.180
+       zuul.routes.wordpress.url: wordpress
+   couchdb:
+     image: couchdb
+     volumes:
+       - /local/data/couchdb/dbData:/opt/couchdb/data
+     ports:
+       - "5984:5984"
+     restart: always
+     container_name: couchdb
+     environment:
+       COUCHDB_PASSWORD: mysecretpassword
+       COUCHDB_USER: admin
+#   elasticsearch:
+#     image: elasticsearch
+#     ports:
+#       - "9200:9200"
+#       - "9300:9300"
+#     restart: always
+#     container_name: elasticsearch
+#     environment:
+#       discovery.type: single-node
+   corsproxy:
+     image: corsproxy
+     container_name: corsproxy
+     ports:
+       - "8080:8080"
+     restart: always
+   nodemailer:
+     image: armdocker.rnd.ericsson.se/aia/michael/test/nodemailer:v8.11.1
+     container_name: nodemailer
+     ports:
+       - "3000:3000"
+     restart: always

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+cd portal-adp-deploy/ssl/
+export PORTAL_FUNC_USER=${portal_functional_user}
+export PORTAL_FUNC_USER_PASSWORD=${portal_functional_pass}
+
+# Run egs sync
+python egsSync.py "https://adp.ericsson.se/api"
+
+# Run the mimer token refresh
+python mimerTokenRefresh.py "https://adp.ericsson.se/api"
+

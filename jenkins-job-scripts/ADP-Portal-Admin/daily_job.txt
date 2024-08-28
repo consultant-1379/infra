@@ -1,0 +1,11 @@
+host_user=root
+target_host=seliius23906.seli.gic.ericsson.se
+targetenv=${host_user}@${target_host}
+
+ssh_cmd="ssh -q -i /home/aiaadm100/.ssh/id_rsa ${targetenv}"
+service_name=adp_backend
+worker_name=adp_worker
+
+${ssh_cmd} "docker restart ${worker_name}"
+sleep 15
+${ssh_cmd} "docker exec -d -i -e PORTAL_FUNC_USER=${portal_functional_user} -e PORTAL_FUNC_USER_PASSWORD=${portal_functional_pass} ${service_name} /bin/sh -c 'npm run contributorsStatistics > /proc/1/fd/1'"

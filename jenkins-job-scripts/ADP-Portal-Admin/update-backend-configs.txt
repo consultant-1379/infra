@@ -1,0 +1,69 @@
+#!/bin/bash
+
+staging_env=seliius18473.seli.gic.ericsson.se
+new_staging_env=seliius21284.seli.gic.ericsson.se
+live_env=seliius23906.seli.gic.ericsson.se
+
+key_arg="-i /home/aiaadm100/.ssh/id_rsa"
+new_staging_login="root@${new_staging_env}"
+staging_login="root@${staging_env}"
+live_login="root@${live_env}"
+
+ssh_new_staging="ssh -q ${key_arg} ${new_staging_login}"
+ssh_staging="ssh -q ${key_arg} ${staging_login}"
+ssh_live="ssh -q ${key_arg} ${live_login}"
+
+live_couch_password=$COUCH_PASS
+live_mongo_password=$MONGO_PASS
+live_jwt_secret=$JWT_SECRET
+live_jwt_integration_secret=$JWT_INTEGRATION_SECRET
+live_tableau_pass=$TABLEAU_PASS
+
+test_couch_password=$COUCH_PASS
+test_mongo_password=$MONGO_PASS
+test_jwt_secret=$JWT_SECRET
+test_jwt_integration_secret=$JWT_INTEGRATION_SECRET
+test_tableau_pass=$TABLEAU_PASS
+
+staging_couch_password=$COUCH_PASS
+staging_mongo_password=$MONGO_PASS
+staging_jwt_secret=$JWT_SECRET
+staging_jwt_integration_secret=$JWT_INTEGRATION_SECRET
+staging_tableau_pass=$TABLEAU_PASS
+
+filename=config.json
+repo_root=${PWD}
+cd portal-adp-deploy/ssl/backend
+
+for env_name in $(ls ./configs/stag);
+do
+  sed -i "s/#couchpass#/${test_couch_password}/g" ./configs/stag/${env_name}/${filename}
+  sed -i "s/#mongopass#/${test_mongo_password}/g" ./configs/stag/${env_name}/${filename}
+  sed -i "s/#tableaupass#/${test_tableau_pass}/g" ./configs/stag/${env_name}/${filename}
+  sed -i "s/#jwtsecret#/${test_jwt_secret}/g" ./configs/stag/${env_name}/${filename}
+  sed -i "s/#jwtintegrationsecret#/${test_jwt_integration_secret}/g" ./configs/stag/${env_name}/${filename}
+  scp -r ${key_arg} ./configs/stag/${env_name}/${filename} ${staging_login}:$(cat ./configs/stag/${env_name}/location.txt)
+  # $ssh_staging "echo $(cat ./configs/stag/${env_name}/location.txt); cat $(cat ./configs/stag/${env_name}/location.txt)"
+done
+
+for env_name in $(ls ./configs/new_stag);
+do
+  sed -i "s/#couchpass#/${staging_couch_password}/g" ./configs/new_stag/${env_name}/${filename}
+  sed -i "s/#mongopass#/${staging_mongo_password}/g" ./configs/new_stag/${env_name}/${filename}
+  sed -i "s/#tableaupass#/${staging_tableau_pass}/g" ./configs/new_stag/${env_name}/${filename}
+  sed -i "s/#jwtsecret#/${staging_jwt_secret}/g" ./configs/new_stag/${env_name}/${filename}
+  sed -i "s/#jwtintegrationsecret#/${staging_jwt_integration_secret}/g" ./configs/new_stag/${env_name}/${filename}
+  scp -r ${key_arg} ./configs/new_stag/${env_name}/${filename} ${new_staging_login}:$(cat ./configs/new_stag/${env_name}/location.txt)
+  # $ssh_staging "echo $(cat ./configs/new_stag/${env_name}/location.txt); cat $(cat ./configs/new_stag/${env_name}/location.txt)"
+done
+
+sed -i "s/#couchpass#/${live_couch_password}/g" ./configs/live/live/${filename}
+sed -i "s/#mongopass#/${live_mongo_password}/g" ./configs/live/live/${filename}
+sed -i "s/#tableaupass#/${live_tableau_pass}/g" ./configs/live/live/${filename}
+sed -i "s/#jwtsecret#/${live_jwt_secret}/g" ./configs/live/live/${filename}
+sed -i "s/#jwtintegrationsecret#/${live_jwt_integration_secret}/g" ./configs/live/live/${filename}
+scp -r ${key_arg} ./configs/live/live/${filename} ${live_login}:$(cat ./configs/live/live/location.txt)
+# $ssh_live "echo $(cat ./configs/live/live/location.txt); cat $(cat ./configs/live/live/location.txt)"
+
+cd ${repo_root}
+rm -rf ./*

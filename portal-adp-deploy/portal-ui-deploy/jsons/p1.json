@@ -1,0 +1,42 @@
+{
+    "debugging": true, 
+    "WORDPRESS": {
+        "DOC": "pages?slug=:docname", 
+        "BLOGS": "posts?per_page=50", 
+        "SEARCHPOSTS": "posts?per_page=100&search=:keyword", 
+        "PARENT_EXIDS": "pages?parent=:pid:ids", 
+        "USER": "users/:userid", 
+        "NEWS": "posts?categories=35&per_page=50", 
+        "PAGE_STATUS": "pages/:id?status=:status", 
+        "CATEGORIES": "categories?parent=:parent", 
+        "SEARCH": "search/:keyword", 
+        "USERS": "users?per_page=100", 
+        "AUTHOR": "users?slug=:signum", 
+        "SAVEPOST": "posts", 
+        "POSTS": "posts", 
+        "CREATE_PAGE": "pages", 
+        "MENUS": "adp_portal_menu", 
+        "PAGECHECKPATH": "fetchArticleValidatePath", 
+        "TUTORIALCHECKPATH": "fetchTutorialPageValidatePath", 
+        "CATEGORIES_ALL": "categories?per_page=100", 
+        "CATEGORY": "posts?categories=:catid&per_page=100", 
+        "MENU": "fetch_menu", 
+        "DOC_PREVIEW": "preview/:id", 
+        "BLOG": "posts/:id", 
+        "HIGHLIGHTS": "highlightsMenuList", 
+        "TUTORIAL_PAGE": "tutorialPageBySlug", 
+        "PAGE": "pages/:id"
+    }, 
+    "NOTIFICATION": "https://seliius18473.seli.gic.ericsson.se:58081/notify/send-email", 
+    "API_ENDPOINTS": {
+        "COUCHDB": "https://seliius18473.seli.gic.ericsson.se:58081/database/adp"
+    }, 
+    "GERRIT": {
+        "DOC": "https://seliius18473.seli.gic.ericsson.se:58081/gerrit/http://gerrit-gamma.gic.ericsson.se/a/projects/:project/branches/master/files/:file/content"
+    }, 
+    "DEV": "seliius18473.seli.gic.ericsson.se:58081", 
+    "ELASTICSEARCH": "https://131.160.143.86:9200", 
+    "PORTAL_API": "https://seliius18473.seli.gic.ericsson.se:58081/api", 
+    "LOGIN": "https://seliius18473.seli.gic.ericsson.se:58081/wordpress/wp-json", 
+    "BASE_URL_WORDPRESS": "https://seliius18473.seli.gic.ericsson.se:58081/wordpress/wp-json/wp/v2/"
+}

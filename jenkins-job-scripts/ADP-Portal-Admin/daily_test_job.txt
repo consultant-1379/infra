@@ -1,0 +1,11 @@
+host_user=root
+target_host=seliius18473.seli.gic.ericsson.se
+targetenv=${host_user}@${target_host}
+
+ssh_cmd="ssh -q -i /home/aiaadm100/.ssh/id_rsa ${targetenv}"
+service_name=adp_backend
+worker_name=adp_worker
+
+${ssh_cmd} "docker restart mockserver0 mockserver1 mockserver2 mockserver3 mockserver4 mockserver5"
+${ssh_cmd} "docker system prune -af"
+

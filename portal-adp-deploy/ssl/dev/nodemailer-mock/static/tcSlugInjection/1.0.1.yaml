@@ -1,0 +1,15 @@
+version: 1.0.1
+documents:
+ - name: Sample 1
+   filepath: '1.0.1/CAS_Deployment_Guide.zip'
+   default: true
+   slug: 'slug-injection'
+ - name: Sample 2
+   filepath: '1.0.1/test.html'
+   slug: null
+ - name: An External
+   slug: 500
+   external-link: https://www.ericsson.se
+ - name: An External 2
+   slug:
+   external-link: https://www.ericsson.se

@@ -1,0 +1,7 @@
+{
+    "debugging": true,
+    "BASE_URL_WORDPRESS": "http://10.44.149.110:23307/wp-json/wp/v2/",
+    "API_ENDPOINTS": {
+        "COUCHDB": "http://eselivm3v259l.lmera.ericsson.se:58080/datascience"
+    }
+}

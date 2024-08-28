@@ -1,0 +1,17 @@
+---
+- name: Install HELM client on master 
+  hosts: master
+  copy:
+    content: |
+       #!/usr/bin/bash
+       /usr/bin/curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
+       chmod +x get_helm.sh
+       ./get_helm.sh -v v2.8.2
+       /usr/local/bin/helm init --client-only
+    dest: /tmp/install-helm.sh
+    mode: 0777
+- shell: /tmp/install-helm.sh 
+  hosts: master
+  become: true
+  become_user: centos
+

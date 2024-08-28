@@ -1,0 +1,718 @@
+#!/bin/bash
+
+repo_root=${PWD}
+docker_hub_user=adpportal
+docker_hub_pass="71e97781-bb65-4e04-a860-5c8f8746e2ba"
+compose_location=/local/data/compose
+
+
+hostname_live=seliius23906.seli.gic.ericsson.se
+hostname_test=seliius18473.seli.gic.ericsson.se
+hostname_staging=seliius21284.seli.gic.ericsson.se
+if [[ "${chosen_environment}" = "live" ]];
+then
+checked_in_compose_location=portal-adp-deploy/ssl/live/docker-compose.yml
+client_id="cf9fa3b4-e628-4ec1-8011-288989530a7a"
+azure_secret=${azure_live_secret}
+target_host=${hostname_live}
+service_name=adp_backend
+backend_compose_name=adpbackend
+mailer_name=nodemailer-ssl
+nginx_name=nginxssl
+nginx_service_name=nginx-portal-content-ssl
+wp_port=23307
+version_key="BACKEND_VERSION"
+couch_service=couchdb-ssl
+couch_nginx_config_location=/local/data/config/couch-nginx
+else
+
+if [[ "${chosen_environment}" = "staging" ]];
+then
+checked_in_compose_location=portal-adp-deploy/ssl/staging/docker-compose.yml
+client_id="42b0a05a-2867-4dbd-8eb3-451d9eca5059"
+azure_secret=${azure_test_secret}
+target_host=${hostname_test}
+service_name=adp_backend
+backend_compose_name=adpbackend
+mailer_name=nodemailer-ssl
+nginx_name=nginxssl
+nginx_service_name=nginx-portal-content-ssl
+wp_port=23307
+version_key="BACKEND_VERSION"
+couch_service=couchdb-ssl
+couch_nginx_config_location=/local/data/config/couch-nginx
+else
+# Test environment case
+
+target_host=${hostname_test}
+client_id=""
+checked_in_compose_location=portal-adp-deploy/ssl/test/docker-compose.yml
+backend_compose_name=dupe${chosen_environment}adpbackend
+service_name=dupe${chosen_environment}_adp_backend
+nginx_name=dupe${chosen_environment}nginxssl
+nginx_service_name=dupe${chosen_environment}-nginx
+if [[ "${chosen_environment}" = "0" ]];
+then
+	nginx_service_name="duep0-nginx"
+fi
+mailer_name=nodemailer-ssl-test
+compose_location=/local/test-env-setup
+wp_port=23309
+version_key="BACKEND${chosen_environment}_VERSION"
+couch_service=dupe${chosen_environment}-couchdb-ssl
+couch_nginx_config_location=/local/data${chosen_environment}/config/couch-nginx
+fi
+fi
+
+if [[ "${chosen_environment}" = "new_staging" ]];
+then
+checked_in_compose_location=portal-adp-deploy/ssl/staging/docker-compose.yml
+client_id="42b0a05a-2867-4dbd-8eb3-451d9eca5059"
+azure_secret=${azure_test_secret}
+compose_location=/local/data/compose
+target_host=${hostname_staging}
+service_name=adp_backend
+backend_compose_name=adpbackend
+mailer_name=nodemailer-ssl
+nginx_name=nginxssl
+nginx_service_name=nginx-portal-content-ssl
+wp_port=23307
+version_key="BACKEND_VERSION"
+couch_service=couchdb-ssl
+couch_nginx_config_location=/local/data/config/couch-nginx
+fi
+
+echo ${target_host}
+
+host_user=root
+adp_user=ejohdol
+adp_group=eusers
+
+
+monitoring_location=/local/monitoring
+#compose_location=${monitoring_location}/prometheus
+
+
+targetenv=${host_user}@${target_host}
+
+scp_cmd="scp -i /home/lciadm100/.ssh/id_rsa"
+ssh_cmd="ssh -q -i /home/lciadm100/.ssh/id_rsa ${targetenv}"
+vact="source /local/dock-env/bin/activate; export PORTAL_FUNC_USER=${portal_functional_user}; export PORTAL_FUNC_USER_PASSWORD=${portal_functional_pass};export AZURE_CLIENT_ID=${client_id}; export AZURE_CLIENT_SECRET=${azure_secret}"
+
+if [[ "${chosen_operation}" = "enable_log_rotate" ]];
+then
+#${ssh_cmd} 'service docker stop;'
+#${ssh_cmd} 'echo "{\"log-driver\": \"json-file\", \"log-opts\": { \"max-size\": \"10m\", \"max-file\": \"3\"}, \"graph\": \"/local/repo/docker/\"}" > /etc/docker/daemon.json; cat /etc/docker/daemon.json'
+#${ssh_cmd} "cat /etc/docker/daemon.json"
+${ssh_cmd} 'service docker start;'
+fi
+
+if [[ "${chosen_operation}" = "testing" ]];
+then
+${ssh_cmd} "python --version"
+python --version
+
+fi
+
+if [[ "${chosen_operation}" = "fix_ownership_jenkins_folder" ]];
+then
+docker run --rm -i -v /home/lciadm100/jenkins/workspace/frontend/frontend-pipeline/e2e:/tmp/e2e armdocker.rnd.ericsson.se/aia/adp/adp-backend:env5 /bin/sh -c "chown -R $(id -u):$(id -g) /tmp/e2e; ls -lrth /tmp/e2e"
+docker run --rm -i -v /home/lciadm100/jenkins/workspace/adp-portal-branch-test/e2e:/tmp/e2e armdocker.rnd.ericsson.se/aia/adp/adp-backend:env5 /bin/sh -c "chown -R $(id -u):$(id -g) /tmp/e2e; ls -lrth /tmp/e2e"
+fi
+
+if [[ "${chosen_operation}" = "show_env_file" ]];
+then
+
+${ssh_cmd} "cat ${compose_location}/.env"
+
+fi
+
+if [[ "${chosen_operation}" = "couch_info" ]];
+then
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'ls -l'"
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'ls -l /'"
+echo "#######################################################################"
+echo "/etc/nginx:"
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'ls -al /etc/nginx'"
+echo "/etc/nginx/certs:"
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'ls -al /etc/nginx/certs'"
+echo "/etc/ssl/certs:"
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'ls -al /etc/ssl/certs'"
+echo "#######################################################################"
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'cat /etc/nginx/nginx.conf'"
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'cat /entrypoint-nginx.sh'"
+${ssh_cmd} "docker exec -i couchdb-ssl /bin/sh -c 'cat /docker-entrypoint.sh'"
+# ${ssh_cmd} "docker inspect couchdb-ssl"
+
+fi
+
+if [[ "${chosen_operation}" = "couch_down" ]];
+then
+#${ssh_cmd} "cd ${compose_location};${vact};docker-compose stop dupe0couchdbssl dupe1couchdbssl dupe2couchdbssl dupe3couchdbssl dupe4couchdbssl dupe5couchdbssl"
+#${ssh_cmd} "cd ${compose_location};${vact};docker-compose rm -f dupe0couchdbssl dupe1couchdbssl dupe2couchdbssl dupe3couchdbssl dupe4couchdbssl dupe5couchdbssl"
+${ssh_cmd} "cd ${compose_location};${vact};docker-compose stop couchdbssl"
+${ssh_cmd} "cd ${compose_location};${vact};docker-compose rm -f couchdbssl"
+fi
+
+if [[ "${chosen_operation}" = "delete_testing" ]];
+then
+${ssh_cmd} "cat /local/data/compose/docker-compose.*"
+${ssh_cmd} "cat /local/test-env-setup/docker-compose.*"
+#${ssh_cmd} "cat /local/data/test/backend/config.json"
+${ssh_cmd} "cat /etc/redhat-release"
+${ssh_cmd} "cat /proc/cpuinfo"
+${ssh_cmd} "df -kh"
+
+${ssh_cmd} "cat /etc/docker/daemon.json"
+#${ssh_cmd} "ls -lrth /local/repo; cat /etc/fstab; "
+#${ssh_cmd} "mkdir /local/repo/docker; service docker stop; cp -r /var/lib/docker/* /local/repo/docker"
+#${ssh_cmd} "umount -f /var/lib/docker/overlay/*/*; umount -f /var/lib/docker/containers/*/mounts/shm"
+#${ssh_cmd} 'echo "{"log-opts": { \"max-size\": \"10m\", \"max-file\": \"3\"}, \"graph\": \"/local/repo/docker/\"}" > /etc/docker/daemon.json; cat /etc/docker/daemon.json'
+#${ssh_cmd} "service docker start; sleep 30; docker info; ls -l /var/lib/ /var/lib/docker /local/repo /local/repo/docker"
+#${ssh_cmd} "mv /var/lib/docker /var/lib/docker-bkp"
+#${ssh_cmd} "cd ${compose_location};${vact};docker-compose stop mariadbssl; docker-compose rm -f mariadbssl; sleep 15"
+#${ssh_cmd} "cd /local/test-env-setup;${vact};docker-compose stop testmariadbssl mockldap; docker-compose rm -f testmariadbssl mockldap; sleep 15"
+#${ssh_cmd} "cd /local/test-env-setup;${vact};docker-compose stop mockldap; docker-compose rm -f mockldap; sleep 15"
+
+#${ssh_cmd} "cd ${compose_location};${vact};docker-compose stop nginxssl; docker-compose rm -f nginxssl; sleep 15"
+#${ssh_cmd} "cd /local/test-env-setup;${vact};docker-compose stop dupe0nginxssl dupe1nginxssl dupe2nginxssl dupe3nginxssl dupe4nginxssl dupe5nginxssl; docker-compose rm -f dupe0nginxssl dupe1nginxssl dupe2nginxssl dupe3nginxssl dupe4nginxssl dupe5nginxssl; sleep 15"
+#${ssh_cmd} "cd /local/test-env-setup;${vact};docker-compose stop dupe0couchdbssl dupe1couchdbssl dupe2couchdbssl dupe3couchdbssl dupe4couchdbssl dupe5couchdbssl; docker-compose rm -f dupe0couchdbssl dupe1couchdbssl dupe2couchdbssl dupe3couchdbssl dupe4couchdbssl dupe5couchdbssl; sleep 15"
+ 
+#${ssh_cmd} "cd ${compose_location};${vact};docker-compose up -d"
+#${ssh_cmd} "cd /local/test-env-setup;${vact};docker-compose up -d"
+
+#${ssh_cmd} "rm -rf /var/lib/docker-bkp"
+#${ssh_cmd} "cd ${compose_location};${vact};docker-compose stop wordpressssl; docker-compose rm -f wordpressssl; sleep 15"
+#${ssh_cmd} 'docker exec -i couchdb-ssl sh -c "cat /etc/nginx/*.conf"'
+#${ssh_cmd} 'docker exec -i couchdb-ssl sh -c "ls /"'
+#${ssh_cmd} 'ls -l /local; ls -l /local/data/; ls -l /local/data/*; ls -l /local/*'
+#${ssh_cmd} "cd ${compose_location};${vact};docker-compose down"
+
+
+#${ssh_cmd} "cd /local/data; tar -zcvf testdata.tar.gz test"
+#${scp_cmd} "${targetenv}:/local/data/testdata.tar.gz" ./testdata.tar.gz
+#${scp_cmd}  ./testdata.tar.gz "${targetenv}:/local/data/testdata.tar.gz"
+#${ssh_cmd} "cd /local/data/; tar -zxvf testdata.tar.gz; rm -f testdata.tar.gz"
+fi
+
+if [[ "${chosen_operation}" = "install_ssl_keys" ]];
+then
+${ssh_cmd} "cd /local/data/certs;tar -cvf ../certbckup.tar ./*"
+${scp_cmd} ./uploaded_file "${targetenv}:/local/data/certs/keys.tar"
+${ssh_cmd} "cd ${compose_location};${vact};docker-compose stop"
+${ssh_cmd} "cd /local/data/certs;tar -xvf keys.tar; rm -f keys.tar"
+${ssh_cmd} "cd ${compose_location};${vact};docker-compose up -d"
+fi
+
+if [[ "${chosen_operation}" = "collect_git_data" ]];
+then
+
+#new_version=$(${ssh_cmd} "cd ${compose_location}; cat ./.env | grep ${version_key} | sed 's/.*\=//g'")
+echo "Running git collect command in backend " ${service_name}
+
+# ${ssh_cmd} "docker exec -d -i ${service_name} -e PORTAL_FUNC_USER=${portal_functional_user} -e PORTAL_FUNC_USER_PASSWORD=${portal_functional_pass} /bin/sh -c 'npm run contributorsStatistics > /proc/1/fd/1'"
+${ssh_cmd} "docker exec -d -i -e PORTAL_FUNC_USER=${portal_functional_user} -e PORTAL_FUNC_USER_PASSWORD=${portal_functional_pass} ${service_name} /bin/sh -c 'npm run contributorsStatistics > /proc/1/fd/1'"
+fi
+
+if [[ "${chosen_operation}" = "rsyslog_restart" ]];
+then
+${ssh_cmd} service rsyslog restart
+${ssh_cmd} service rpcgssd restart
+fi
+
+if [[ "${chosen_operation}" = "artifactorytesting" ]];
+then
+old_pra_artifactory="arm.rnd.ki.sw.ericsson.se/artifactory"
+new_pra_artifactory="arm.sero.gic.ericsson.se"
+
+old_images_artifactory="armdocker.rnd.ericsson.se"
+new_images_artifactory="arm.seli.gic.ericsson.se"
+
+${ssh_cmd} "docker login -u=${docker_user} --password=${docker_pass} ${old_pra_artifactory}"
+${ssh_cmd} "docker login -u=${docker_user} --password=${docker_pass} ${old_images_artifactory}"
+${ssh_cmd} "docker login -u=${docker_user} --password=${docker_pass} ${new_pra_artifactory}"
+${ssh_cmd} "docker login -u=${docker_user} --password=${docker_pass} ${new_images_artifactory}"
+${ssh_cmd} "cat ~/.docker/config.json"
+fi
+
+if [[ "${chosen_operation}" = "hublogin" ]];
+then
+
+${ssh_cmd} "docker logout; docker login --username=${docker_hub_user} --password=${docker_hub_pass} registry-1.docker.io"
+${ssh_cmd} "cat ~/.docker/config.json"
+${ssh_cmd} "docker pull docker.io/nginx/nginx-prometheus-exporter:0.4.2"
+${ssh_cmd} "docker pull prom/alertmanager"
+fi
+
+if [[ "${chosen_operation}" = "diskSpace" ]];
+then
+${ssh_cmd} "df -kh"
+fi
+
+if [[ "${chosen_operation}" = "diskUsage" ]];
+then
+${ssh_cmd} "docker ps"
+${ssh_cmd} "du -h /local/repo/docker/overlay2 | grep '[0-9\.]\+M'"
+${ssh_cmd} "ls -lrth /local/repo/docker/overlay2"
+${ssh_cmd} "df -kh"
+${ssh_cmd} "du -h / | grep '[0-9\.]\+G'"
+${ssh_cmd} "docker system df"
+${ssh_cmd} "ls -lh /local/repo/docker/containers/*/*-json.log"
+${ssh_cmd} "ls -lhR /local/repo/docker/containers"
+
+fi
+
+if [[ "${chosen_operation}" = "prometheusDiskUsage" ]];
+then
+
+${ssh_cmd} 'ls -lh $(sudo du --max-depth=1 /local/data/promdata | sort -r -k1,1n | head -n -1 | tail -7 | cut -f 2)'
+fi
+
+if [[ "${chosen_operation}" = "findLargeFiles" ]];
+then
+#${ssh_cmd} "df -h /repo;cd /repo;du -sh *;find /repo -type f -xdev -size +1000000 -exec ls -lhrt {} \;"
+${ssh_cmd} "df -h /local/data"
+${ssh_cmd} "df -h /repo;cd /local;du -sh *;find /repo -type f -xdev -size +1000000 -exec ls -lhrt {} \;"
+echo "----"
+${ssh_cmd} "cd /local/data;du -sh *"
+#${ssh_cmd} "df -h /repo;cd /repo;du -sh *;find /repo -type f -xdev -size +100000 -exec ls -lhrt {} \;"
+
+#${ssh_cmd} "du -h /repo | sort -n -r"
+${ssh_cmd} "du --max-depth=1 /repo/docker/overlay2 | sort -r -k1,1n"
+
+# Show the 7 largest folders in the overlay2 folder
+#${ssh_cmd} 'ls -l $(sudo du --max-depth=1 /repo/docker/overlay2 | sort -r -k1,1n | head -n -1 | tail -7 | cut -f 2 | sed "s/$/\/merged/")'
+# Show the largest folders in the containers folder
+${ssh_cmd} 'ls -lh $(sudo du --max-depth=1 /repo/docker/containers | sort -r -k1,1n | head -n -1 | tail -7 | cut -f 2)'
+
+#${ssh_cmd} "ls -lrth /repo/docker/overlay2"
+${ssh_cmd} "ls -lrth /repo/docker/overlay2"
+${ssh_cmd} 'docker inspect -f $"{{.Name}}   {{.GraphDriver.Data.MergedDir}}" $(docker ps -aq)'
+fi
+
+if [[ "${chosen_operation}" = "memUsage" ]];
+then
+free -m
+${ssh_cmd} "free -m"
+${ssh_cmd} "ps -e -o pid,vsz,comm= | sort -n -k 2 | tail -10
+"
+fi
+
+if [[ "${chosen_operation}" = "troubleshoot" ]];
+then
+#${ssh_cmd} "ls -l /local/data5/adp/"
+#${ssh_cmd} "ls -l /tmp/dist/"
+echo ${repo_root}
+
+fi
+
+
+if [[ "${chosen_operation}" = "clean" ]];
+then
+${ssh_cmd} "df -kh"
+${ssh_cmd} "rm -rf /local/adp-backup0; rm -rf /local/adp-backup1; rm -rf /local/adp-backup2; rm -rf /local/adp-backup3; rm -rf /local/adp-backup4; rm -rf /local/adp-backup5"
+
+${ssh_cmd} "docker container prune -f"
+${ssh_cmd} "docker image prune -f"
+${ssh_cmd} "docker volume prune -f"
+${ssh_cmd} "docker system prune -af"
+${ssh_cmd} "df -kh"
+
+fi
+
+
+
+if [[ "${chosen_operation}" = "cleanLogs" ]];
+then
+#${ssh_cmd} "truncate -s 0 /repo/docker/containers/764938bd15e565c8dc7fd78bdeb64d3232ad7a1759ad6f2949905b91c11ee113/764938bd15e565c8dc7fd78bdeb64d3232ad7a1759ad6f2949905b91c11ee113-json.log"
+#${ssh_cmd} "truncate -s 0 /repo/docker/containers/9a4084df564653e3d7690913a87a157c6bcffb4d4b7d2c35a5f0eb757a657127/9a4084df564653e3d7690913a87a157c6bcffb4d4b7d2c35a5f0eb757a657127-json.log"
+#${ssh_cmd} "truncate -s 0 /local/repo/docker/containers/f299273c6de39254d674b1d5e7a963e7b6fe7d49cd5841caec3a3dfef7fccbc9/f299273c6de39254d674b1d5e7a963e7b6fe7d49cd5841caec3a3dfef7fccbc9-json.log"
+#${ssh_cmd} "truncate -s 0 /local/repo/docker/containers/0f998d14b3a569b5bdfe7cf9facbcee958970b659268873a191a6fba87ca0906/0f998d14b3a569b5bdfe7cf9facbcee958970b659268873a191a6fba87ca0906-json.log"
+#${ssh_cmd} "truncate -s 0 /local/repo/docker/containers/7dd1fe422171e4b05ec26725e0e5f2eb4462b0a1e58f90e05af8fd2dbd49c9ec/7dd1fe422171e4b05ec26725e0e5f2eb4462b0a1e58f90e05af8fd2dbd49c9ec-json.log"
+#${ssh_cmd} "truncate -s 0 /local/repo/docker/containers/ad4e814ed032426b1adb5bb184ee044e62754bd3f861667f0dff52100beda2b0/ad4e814ed032426b1adb5bb184ee044e62754bd3f861667f0dff52100beda2b0-json.log"
+#${ssh_cmd} "truncate -s 0 /local/repo/docker/containers/66d74404527d04e8e53a035d194ee4122eb8f94fde717c623e0d8d4e728561f0/66d74404527d04e8e53a035d194ee4122eb8f94fde717c623e0d8d4e728561f0-json.log"
+
+# Find the 7 largest folders in docker/containers and truncate the logfiles within them
+${ssh_cmd} 'for f in $(sudo du --max-depth=1 /local/repo/docker/containers | sort -r -k1,1n | head -n -1 | tail -7 | cut -f 2); do truncate -s 0 $f/$(basename $f)-json.log; ls -l $f/$(basename $f)-json.log; done;'
+
+fi
+
+if [[ "${chosen_operation}" = "logs" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker logs ${service_name}"
+#${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker logs nginxexporter"
+
+fi
+if [[ "${chosen_operation}" = "logs_any" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker logs ${ARGUMENT}"
+${ssh_cmd} "docker inspect ${ARGUMENT}"
+fi
+
+
+if [[ "${chosen_operation}" = "logsnginx" ]];
+then
+${ssh_cmd} "docker ps;docker logs ${nginx_service_name}"
+fi
+
+if [[ "${chosen_operation}" = "mailerlogs" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker logs ${mailer_name}"
+${ssh_cmd} "cd ${compose_location};cat docker-compose.yml"
+
+fi
+
+
+if [[ "${chosen_operation}" = "mailerrestart" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker restart ${mailer_name}"
+${ssh_cmd} "cd ${compose_location};cat docker-compose.yml"
+
+fi
+
+
+if [[ "${chosen_operation}" = "backup_live_wp" ]];
+then
+mysql_docker_container=wp-mysql-ssl
+mysql_user=root
+mysql_pass=my-secret-pw
+database=wordpress
+backup_folder=/local/wpbackup/
+
+${ssh_cmd} "mkdir -p /local/wpbackup/"
+${ssh_cmd} "docker exec wp-mysql-ssl /usr/bin/mysqldump --user=root --password=my-secret-pw wordpress > wordpress-backup.sql; pwd; ls -l"
+${scp_cmd} "${targetenv}:/root/wordpress-backup.sql" ./wordpress-backup.sql
+
+fi
+
+
+
+if [[ "${chosen_operation}" = "full_content_backup" ]];
+then
+# Mysql MUST be stopped for this step otherwase a bad copy will be made
+${ssh_cmd} "cd /local/data; tar -zcvf data.tar.gz adp compose test config grafdata promdata certs couchdb wordpress"
+${scp_cmd} "${targetenv}:/local/data/data.tar.gz" ./data.tar.gz
+fi
+
+if [[ "${chosen_operation}" = "full_content_restore_from_backup" ]];
+then
+${ssh_cmd} "mkdir -p /local/data/"
+echo "Copying backup tar to ${targetenv}"
+${scp_cmd} ./data.tar.gz "${targetenv}:/local/data/data.tar.gz"
+echo "Copy complete, unpacking..."
+${ssh_cmd} "cd /local/data/; tar -zxvf data.tar.gz; rm -f data.tar.gz"
+echo "Unpacking done"
+fi
+
+if [[ "${chosen_operation}" = "start" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker-compose up -d;docker ps"
+fi
+
+if [[ "${chosen_operation}" = "restart" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker-compose restart ${backend_compose_name};docker logs ${service_name}"
+fi
+
+if [[ "${chosen_operation}" = "recreate" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker-compose stop ${backend_compose_name};docker-compose rm -f ${backend_compose_name};docker-compose up -d ${backend_compose_name};docker logs ${service_name}"
+fi
+
+if [[ "${chosen_operation}" = "restart_couch" ]];
+then
+${ssh_cmd} "docker ps;docker restart ${couch_service}"
+fi
+
+if [[ "${chosen_operation}" = "stop_all" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker-compose down"
+fi
+
+if [[ "${chosen_operation}" = "restartNginx" ]];
+then
+${ssh_cmd} "cd ${compose_location};${vact};cd ${compose_location};docker ps;docker-compose restart ${nginx_name}"
+fi
+
+if [[ "${chosen_operation}" = "dockerPs" ]];
+then
+${ssh_cmd} "docker ps"
+fi
+
+if [[ "${chosen_operation}" = "dockerImageContList" ]];
+then
+${ssh_cmd} "docker image list -a"
+echo "Containers....\n"
+${ssh_cmd} "docker container list -a"
+echo "Overlays..."
+${ssh_cmd} 'docker inspect -f $"{{.Name}}   {{.GraphDriver.Data.MergedDir}}" $(docker ps -aq)'
+
+fi
+
+
+if [[ "${chosen_operation}" = "mysql_cmd" ]];
+then
+${ssh_cmd} "docker ps"
+mysql_docker_container=wp-mysql-ssl-test
+
+mysql_user=root
+mysql_pass=my-secret-pw
+database=wordpress
+sql_cmd="UPDATE wp_options SET option_value = '' WHERE option_name= 'maintenanceModeMessage';"
+mysql_cmd="docker exec -i ${mysql_docker_container} mysql -u ${mysql_user} -p${mysql_pass} ${database} --execute"
+echo $mysql_cmd
+cmd="${ssh_cmd} ${mysql_cmd} \"${sql_cmd}\""
+echo $cmd
+${cmd}
+fi
+
+
+if [[ "${chosen_operation}" = "mysql_init" ]];
+then
+${ssh_cmd} "docker ps"
+mysql_docker_container=wp-mysql-ssl
+mysql_user=root
+mysql_pass=my-secret-pw
+wp_database=wordpress
+mysql_cmd="${ssh_cmd} docker exec -i ${mysql_docker_container} mysql -u ${mysql_user} -p${mysql_pass} ${wp_database} --execute"
+wp_host=${target_host}:${wp_port}
+
+# Set siteurl and home variables:
+$mysql_cmd "\"UPDATE wp_options SET option_value = 'https://${wp_host}' where option_name='home' or option_name='siteurl'\""
+
+# Set login/logout redirects to the correct host:
+$mysql_cmd "\"UPDATE wp_login_redirects SET rul_url = 'https://${wp_host}/wp-admin/index.php' where rul_value='administrator'\""
+$mysql_cmd "\"UPDATE wp_login_redirects SET rul_url = 'https://${wp_host}/wp-admin/edit.php' where rul_value='author'\""
+$mysql_cmd "\"UPDATE wp_login_redirects SET rul_url = 'https://${wp_host}/wp-admin/edit.php?post_type=page' where rul_value='editor'\""
+$mysql_cmd "\"UPDATE wp_login_redirects SET rul_url_logout = 'https://${wp_host}/' where rul_value='administrator' OR rul_value='author' OR rul_value='editor'\""
+
+$mysql_cmd "\"select * from wp_login_redirects;\""
+$mysql_cmd "\"select option_name, option_value from wp_options where option_name='home' or option_name='siteurl';\""
+
+
+fi
+
+
+if [[ "${chosen_operation}" = "initial_setup" ]];
+then
+#${ssh_cmd} "yum install -y docker python-virtualenv"
+
+# configure docker to use the alternative storage for container info and optionally enable log rotation.
+#${ssh_cmd} "service docker stop"
+#Docker config with log rotation and the json-file setup
+#${ssh_cmd} 'echo "{\"log-driver\": \"json-file\", \"log-opts\": { \"max-size\": \"10m\", \"max-file\": \"3\"}, \"graph\": \"/local/repo/docker/\"}" > /etc/docker/daemon.json; cat /etc/docker/daemon.json'
+#Docker config with no log rotation specified (if the daemon is started with journald command line flag for example)
+${ssh_cmd} 'echo "{\"graph\": \"/local/repo/docker/\"}" > /etc/docker/daemon.json; cat /etc/docker/daemon.json'
+
+${ssh_cmd} "service docker start"
+${ssh_cmd} "systemctl status docker.service; cat /etc/docker/daemon.json "
+${ssh_cmd} "sed -i 's/18473/21284/g' /local/data/adp/assets/config/development.json"
+${ssh_cmd} "sed -i 's/18473/21284/g' /local/data/adp/assets/config/production.json"
+
+#${ssh_cmd} "cd /local/; python -m virtualenv dock-env"
+#${ssh_cmd} "${vact}; pip install docker-compose"
+fi
+
+if [[ "${chosen_operation}" = "ldap_init" ]];
+then
+${ssh_cmd} "${vact}; cd $compose_location;docker-compose stop mockldap; docker-compose rm -f mockldap; docker-compose up -d mockldap;sleep 30; ./init_ldap.sh"
+fi
+
+if [[ "${chosen_operation}" = "ldap_update" ]];
+then
+docker login --username=${docker_hub_user} --password=${docker_hub_pass}
+docker pull osixia/openldap:1.2.1
+cd portal-adp-deploy/ssl/dev/mockldap
+./build.sh
+./publish.sh 1.0.1
+${ssh_cmd} "${vact};docker pull armdocker.rnd.ericsson.se/aia/adp/mockldap-test:1.0.1; cd $compose_location;docker-compose stop mockldap; docker-compose rm -f mockldap; docker-compose up -d mockldap;sleep 30; ./init_ldap.sh"
+fi
+
+if [[ "${chosen_operation}" = "get_compose_file" ]];
+then
+${scp_cmd} "${targetenv}:${compose_location}/docker-compose.yml" ./docker-compose-${chosen_environment}.yml
+
+fi
+
+if [[ "${chosen_operation}" = "getfile" ]];
+then
+
+${ssh_cmd} "ls -l /local/data1/config"
+${ssh_cmd} "ls -l /local/data1/config/nginx"
+${scp_cmd} "${targetenv}:/local/data0/config/nginx/nginx.conf" ./nginx0.conf
+${scp_cmd} "${targetenv}:/local/data1/config/nginx/nginx.conf" ./nginx1.conf
+${scp_cmd} "${targetenv}:/local/data2/config/nginx/nginx.conf" ./nginx2.conf
+${scp_cmd} "${targetenv}:/local/data3/config/nginx/nginx.conf" ./nginx3.conf
+${scp_cmd} "${targetenv}:/local/data4/config/nginx/nginx.conf" ./nginx4.conf
+${scp_cmd} "${targetenv}:/local/data5/config/nginx/nginx.conf" ./nginx5.conf
+fi
+
+if [[ "${chosen_operation}" = "build_mockserver" ]];
+then
+cd portal-adp-deploy/ssl/dev/mockserver
+./build.sh
+./publish.sh
+fi
+
+if [[ "${chosen_operation}" = "build_elastic" ]];
+then
+cd portal-adp-deploy/ssl/dev/elastic
+./build.sh
+./publish.sh 7.9.2
+fi
+
+if [[ "${chosen_operation}" = "build_kibana" ]];
+then
+cd portal-adp-deploy/ssl/dev/kibana
+./build.sh
+./publish.sh 7.9.2
+fi
+
+if [[ "${chosen_operation}" = "build_couch" ]];
+then
+cd portal-adp-deploy/ssl/dev/couch
+./build.sh 1.0.1
+./publish.sh 1.0.1
+fi
+
+if [[ "${chosen_operation}" = "build_portal_base_image" ]];
+then
+cd portal-adp-deploy/ssl/dev/portal-base-image
+./build.sh 1.0.2
+./publish.sh 1.0.2
+fi
+
+if [[ "${chosen_operation}" = "build_nginx_image" ]];
+then
+cd portal-adp-deploy/ssl/dev/nginx
+./build.sh
+./publish.sh
+fi
+if [[ "${chosen_operation}" = "build_mariadb_image" ]];
+then
+cd portal-adp-deploy/ssl/dev/mariadb
+./build.sh
+./publish.sh
+fi
+if [[ "${chosen_operation}" = "build_mongoexpress_image" ]];
+then
+cd portal-adp-deploy/ssl/dev/mongoexpress
+./build.sh
+./publish.sh
+fi
+if [[ "${chosen_operation}" = "build_matomo_image" ]];
+then
+cd portal-adp-deploy/ssl/dev/matomo
+./build.sh
+./publish.sh
+fi
+
+if [[ "${chosen_operation}" = "build_angular_image" ]];
+then
+cd portal-adp-deploy/ssl/dev/angular
+./build.sh
+./publish.sh
+fi
+
+if [[ "${chosen_operation}" = "update_compose" ]];
+then
+echo "${scp_cmd} ${checked_in_compose_location} ${targetenv}:${compose_location}/docker-compose.yml"
+${scp_cmd} "${checked_in_compose_location}" "${targetenv}:${compose_location}/docker-compose.yml"
+${ssh_cmd} "${vact}; cd $compose_location;docker-compose up -d --remove-orphans"
+fi
+
+if [[ "${chosen_operation}" = "update_common_couch_config" ]];
+then
+${ssh_cmd} "mkdir -p ${couch_nginx_config_location}"
+${scp_cmd} "portal-adp-deploy/ssl/couch/staging/couch-nginx.conf" "${targetenv}:${couch_nginx_config_location}/nginx.conf"
+${ssh_cmd} "docker restart ${couch_service}"
+fi
+
+if [[ "${chosen_operation}" = "bwi_update_compose" ]];
+then
+echo "${scp_cmd} ${checked_in_compose_location} ${targetenv}:${compose_location}/docker-compose.yml"
+${scp_cmd} "${checked_in_compose_location}" "${targetenv}:${compose_location}/docker-compose.yml"
+# ${ssh_cmd} "${vact}; cd $compose_location;docker-compose stop couchdbssl"
+${ssh_cmd} "${vact}; cd $compose_location;docker-compose up -d"
+fi
+
+if [[ "${chosen_operation}" = "pip_update_docker_compose" ]];
+then
+${ssh_cmd} "docker --version;${vact};pip install docker-compose -U;docker-compose --version"
+fi
+
+if [[ "${chosen_operation}" = "recreate_mongos" ]];
+then
+if [[ "${chosen_environment}" = "live" ]];
+then
+echo "This command cannot be run on live because it wipes the database."
+else
+if [[ "${chosen_environment}" = "new_staging" ]];
+then
+mongocnt="mongo"
+mongoxp="mongo-express"
+else
+mongocnt="mongo${chosen_environment}"
+mongoxp="mongo-express${chosen_environment}"
+${ssh_cmd} "${vact}; cd $compose_location;docker-compose stop ${mongocnt} ${mongoxp}; docker-compose rm -f ${mongocnt} ${mongoxp}; rm -rf /local/data${chosen_environment}/mongodb/* ; docker-compose up -d"
+fi
+fi
+fi
+
+if [[ "${chosen_operation}" = "trigger_egs_sync" ]];
+then
+cd portal-adp-deploy/ssl/
+export PORTAL_FUNC_USER=${portal_functional_user}
+export PORTAL_FUNC_USER_PASSWORD=${portal_functional_pass}
+
+if [[ "${chosen_environment}" = "new_staging" ]];
+then
+python egsSync.py "https://seliius21284.seli.gic.ericsson.se/api"
+fi
+
+if [[ "${chosen_environment}" = "live" ]];
+then
+python egsSync.py "https://adp.ericsson.se/api"
+fi
+
+fi
+
+
+if [[ "${chosen_operation}" = "publish_default_service" ]];
+then
+cd portal-adp-deploy/ssl/dev/default-service
+./build.sh
+fi
+
+if [[ "${chosen_operation}" = "setup_mongo_dirs" ]];
+then
+
+if [[ "${chosen_environment}" = "live" ]];
+then
+${ssh_cmd} "mkdir -p /local/data/mongodb"
+${ssh_cmd} "ls -l /local/data/"
+else
+if [[ "${chosen_environment}" = "new_staging" ]];
+then
+${ssh_cmd} "mkdir -p /local/data/mongodb"
+${ssh_cmd} "ls -l /local/data/"
+else
+${ssh_cmd} "mkdir -p /local/data/mongodb"
+${ssh_cmd} "mkdir -p /local/data0/mongodb"
+${ssh_cmd} "mkdir -p /local/data1/mongodb"
+${ssh_cmd} "mkdir -p /local/data2/mongodb"
+${ssh_cmd} "mkdir -p /local/data3/mongodb"
+${ssh_cmd} "mkdir -p /local/data4/mongodb"
+${ssh_cmd} "mkdir -p /local/data5/mongodb"
+${ssh_cmd} "ls -l /local/data*"
+fi
+fi
+
+
+fi
+
+
+echo ${repo_root}
+cd ${repo_root}
+rm -rf dsl
+du -sh ../*

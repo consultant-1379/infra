@@ -1,0 +1,208 @@
+version: '2.1'
+networks:
+   portal-network:
+
+services:
+   matomo:
+     image: armdocker.rnd.ericsson.se/aia/adp/matomo:3.10.0
+     container_name: matomo
+     restart: always
+     networks:
+       - portal-network
+     volumes:
+       - /local/data/piwik/:/var/www/html/
+     environment:
+       MATOMO_DATABASE_HOST: wp-mysql-ssl
+       MATOMO_DATABASE_USERNAME: root
+       MATOMO_DATABASE_PASSWORD: my-secret-pw
+       MATOMO_DATABASE_DBNAME: piwik
+       MATOMO_DATABASE_TABLES_PREFIX: piwik_
+   mariadbssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/mariadb:10.4.13
+     container_name: wp-mysql-ssl
+     volumes:
+       - /local/data/wordpress/mysql:/var/lib/mysql
+     ports:
+       - "23306:3306"
+     restart: always
+     networks:
+       - portal-network
+     environment:
+       MYSQL_ROOT_PASSWORD: my-secret-pw
+       MYSQL_DATABASE: wordpress
+       MYSQL_USER: root
+       MYSQL_PASSWORD: my-secret-pw
+   wordpressssl:
+     depends_on:
+       - mariadbssl
+     links:
+       - mariadbssl
+     #image: armdocker.rnd.ericsson.se/aia/ray/aia-wordpress
+     image: armdocker.rnd.ericsson.se/aia/adp/portal-wordpress:1.0.1
+     networks:
+       - portal-network
+     container_name: wordpress-ssl
+     volumes:
+       - /local/data/wordpress/html:/var/www/html
+       - /local/data/config/apache/adp.ericsson.se.conf:/etc/apache2/sites-enabled/adp.ericsson.se.conf
+       - /local/data/certs:/etc/ssl/certs
+     ports:
+       - "23307:443"
+     restart: always
+     environment:
+       WORDPRESS_DB_PASSWORD: wordpress
+       WORDPRESS_DB_USER: root
+       WORDPRESS_DB_PASSWORD: my-secret-pw
+       WORDPRESS_DB_HOST: mariadbssl
+   elasticsearch:
+      image: armdocker.rnd.ericsson.se/aia/adp/elasticsearch:7.9.2
+      restart: always
+      container_name: elasticsearch
+      environment:
+       - discovery.type=single-node
+       - bootstrap.memory_lock=true
+       - "ES_JAVA_OPTS=-Xms512m -Xmx1024m"
+      ulimits:
+        memlock:
+          soft: -1
+          hard: -1
+      volumes:
+       - /local/data/elastic:/usr/share/elasticsearch/data
+      ports:
+        - 48200:9200
+        - 48300:9300
+      networks: 
+        - portal-network
+   kibana:
+      image: armdocker.rnd.ericsson.se/aia/adp/kibana:7.9.2
+      restart: always
+      container_name: kibana
+      ports:
+        - 48201:5601
+      networks: 
+        - portal-network
+   nginxssl:
+     image: armdocker.rnd.ericsson.se/aia/adp/nginx:1.22.1
+     networks:
+        - portal-network
+     container_name: nginx-portal-content-ssl
+     links:
+       - wordpressssl
+       - adpbackend
+       - nodemailerssl
+     volumes:
+       - /local/data/adp/:/usr/share/nginx/html
+       - /local/data/certs:/etc/ssl/certs
+       - /local/data/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+     ports:
+       - "443:443"
+       - "80:80"
+     restart: always
+     environment:
+       host: seliius23906.seli.gic.ericsson.se
+       zuul.routes.wordpress.url: wordpress
+   mongo:
+     container_name: mongo
+     image: armdocker.rnd.ericsson.se/aia/adp/mongo:4.4.1
+     restart: always
+     volumes:
+       - /local/data/mongodb:/data/db
+     environment: 
+       MONGO_INITDB_ROOT_USERNAME: admin
+       MONGO_INITDB_ROOT_PASSWORD: mysecretpassword
+     ports:
+       - 27017:27017
+     command: --wiredTigerCacheSizeGB 2
+     networks:
+       - portal-network
+   mongo-express:
+     container_name: mongo-express
+     image: armdocker.rnd.ericsson.se/aia/adp/mongoexpress:0.54.0
+     restart: always
+     links:
+       - mongo
+     ports:
+       - 48091:8081
+     environment: 
+       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+       ME_CONFIG_MONGODB_ADMINPASSWORD: mysecretpassword
+       ME_CONFIG_BASICAUTH_USERNAME: admin
+       ME_CONFIG_BASICAUTH_PASSWORD: mysecretpassword
+       ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+     depends_on: 
+       - mongo
+     networks:
+       - portal-network
+   adpbackend:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION}
+      volumes:
+       - /local/data/config/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp/
+      ports:
+       - "28070:9999"
+       - "28060:8888"
+      restart: always
+      container_name: adp_backend
+      environment:
+       - AZURE_CLIENT_ID
+       - AZURE_CLIENT_SECRET
+       - PORTAL_FUNC_USER
+       - PORTAL_FUNC_USER_PASSWORD
+       - JWT_SECRET
+       - JWT_INTEGRATION
+       - EGS_CLIENTID
+       - EGS_CLIENTSECRET
+       - EGS_SCOPE
+       - EGS_ACCESSTOKENURL
+       - EGS_GRANT=client_credentials
+      networks:
+        - portal-network
+      links:
+        - mongo
+      depends_on: 
+        - mongo
+   adpbackendworker:
+      image: armdocker.rnd.ericsson.se/aia/adp/adp-backend:${BACKEND_VERSION}
+      volumes:
+       - /local/data/config/backend:/usr/src/app/src/config
+       - /local/data/certs:/usr/src/app/src/keys/adp/
+      ports:
+       - "28071:9999"
+      restart: always
+      container_name: adp_worker
+      environment:
+       - AZURE_CLIENT_ID
+       - AZURE_CLIENT_SECRET
+       - PORTAL_FUNC_USER
+       - PORTAL_FUNC_USER_PASSWORD
+       - JWT_SECRET
+       - JWT_INTEGRATION
+       - BACKEND_TYPE=WORKER
+       - EGS_CLIENTID
+       - EGS_CLIENTSECRET
+       - EGS_SCOPE
+       - EGS_ACCESSTOKENURL
+       - EGS_GRANT=client_credentials
+      networks:
+        - portal-network
+      links:
+        - mongo
+      depends_on: 
+        - mongo
+   asciidoctorservice:
+      image: armdocker.rnd.ericsson.se/aia/adp/asciidoctorservice:${ASCIIDOCTOR_SERVICE_VERSION:-test}
+      restart: always
+      container_name: asciidoctorservice
+      networks: 
+        - portal-network
+   nodemailerssl:
+     image: armdocker.rnd.ericsson.se/aia/michael/test/nodemailer:v8.11.1
+     volumes:
+       - /local/data/config/mailer/servermailer.js:/server.js
+       - /local/data/certs:/etc/ssl/certs
+     container_name: nodemailer-ssl
+     ports:
+       - "3000:3000"
+     restart: always
+     networks:
+       - portal-network

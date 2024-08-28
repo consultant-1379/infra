@@ -1,0 +1,5 @@
+cd portal-adp-deploy/ssl/dev/wordpress/src
+name="armdocker.rnd.ericsson.se/aia/adp/portal-wordpress-test"
+echo BUILD_VERSION: ${version}
+docker build --tag ${name}:${version:-latest} .
+docker push ${name}:${version:-latest}

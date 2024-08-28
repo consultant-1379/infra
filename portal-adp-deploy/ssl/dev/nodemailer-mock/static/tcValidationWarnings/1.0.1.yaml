@@ -1,0 +1,11 @@
+version: 888.67.99
+documents:
+ - name: test1
+   external-link: https://www.ericsson.se
+   slug: 'slug'
+ - name: default
+   external-link: https://www.ericsson.se
+   default: true
+   slug: 'slug'
+   test-field: 'test'
+   

@@ -1,0 +1,564 @@
+pipeline { 
+    agent {
+        node {
+            label DOCKER_SLAVE
+        }
+   
+    }
+    environment {
+        client_id = "42b0a05a-2867-4dbd-8eb3-451d9eca5059"
+        portal_functional = credentials('eadphub-psw')
+        jwt_integration_secret = '' // credentials('adp_portal_jwt_integration_secret')
+        jwt_secret = '' //credentials('adp_portal_jwt_secret')
+        azure_secret = credentials('adp_portal_test_azure_secret')
+    }
+     stages {
+        stage("Frontend Checkout") {
+            steps {
+                // Ideally this should only run once
+                dir('infra') {
+                    checkoutInfra()    
+                    dir("portal-adp-deploy/portal-ui-deploy"){
+                        loadEnvVariables("test", "")
+                    }
+                }
+                dir('adp'){
+                    checkoutFrontend()
+                    setCommitInfo()    
+                }
+            }
+        }
+        stage("Code Quality") {
+            when{
+                expression { params.SKIP_RELEASE == null || params.SKIP_RELEASE == false }
+            }
+            steps {
+                dir('adp') {
+                    sh '''
+                    docker pull armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10
+                    docker run -v ${PWD}:/usr/src/app armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10 npm install
+                    docker run -v ${PWD}:/usr/src/app armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10 npm run lint
+                    '''    
+                }
+            }
+            post {
+                always {
+                    sh '''
+                    docker run -v ${PWD}:/usr/src/app armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10 chown -R $(id -u):$(id -g) .
+                    '''
+                }
+            }
+            
+        }
+        stage("Unit Test") {
+            when{
+                expression { params.SKIP_RELEASE == null || params.SKIP_RELEASE == false }
+            }
+            steps {
+                dir('adp'){
+                    sh '''
+                    docker run -v ${PWD}:/usr/src/app armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10 ng test --watch=false --code-coverage --sourceMap
+                    '''
+                }
+            }
+            post {
+                always{
+                    sh '''
+                    docker run -v ${PWD}:/usr/src/app armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10 chown -R $(id -u):$(id -g) .
+                    '''
+                    junit 'adp/tests/TESTS.xml'
+                    cobertura coberturaReportFile: 'adp/coverage/cobertura-coverage.xml'
+                }
+            }
+        }
+        stage("Build") {
+            when{
+                expression { params.SKIP_RELEASE == null || params.SKIP_RELEASE == false }
+            }
+            steps {
+                dir('adp') {
+                    sh '''
+                    docker run -v ${PWD}:/usr/src/app armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10 ng build --prod --aot
+                    '''
+                }
+            }
+            post {
+                always {
+                    sh '''
+                    docker run -v ${PWD}:/usr/src/app armdocker.rnd.ericsson.se/aia/adp/angular:7.3.10 chown -R $(id -u):$(id -g) .
+                    '''
+                }
+            }
+            
+        }
+        stage("Release") {
+            when{
+                expression { params.SKIP_RELEASE == null || params.SKIP_RELEASE == false }
+            }
+            steps {
+                dir('adp') {
+                    sh '''
+                    ./publish.sh $new_version
+                    '''
+                }
+            }
+        }
+        stage("Build Cypress Testware Image") {
+            when{
+                expression { params.SKIP_CYPRESS_E2E == null || params.SKIP_CYPRESS_E2E == false }
+            }
+            
+            steps {
+                dir('adp/e2e/cypress-test') {
+                    sh '''
+                    ./build.sh $new_version
+                    # Only need to push if the testware is running from somewhere other than slave
+                    # ./publish.sh $new_version
+                    '''
+                }
+            }
+        }
+        stage("Update frontend") {
+            when{
+                expression { params.SKIP_DEPLOY == null || params.SKIP_DEPLOY == false }
+            }
+            steps {
+                script {
+                    currentBuild.description = env.new_version
+                }
+                dir("infra/portal-adp-deploy/portal-ui-deploy"){
+                    updateFrontend(env.new_version, "test", "" )
+                }
+            }
+        }
+        stage("Restore DB") {
+            when{
+                expression { ( params.RESTORE_DB != null && params.RESTORE_DB == true ) && ( params.USE_TEST_DATA != null && params.USE_TEST_DATA == false ) }
+            }
+            steps{
+                
+                dir("infra/portal-adp-deploy/portal-ui-deploy"){
+                    refreshDatabase("test", "")
+                }
+            }
+        }
+        stage("Update backend") {
+            when{
+                expression { params.SKIP_DEPLOY == null || params.SKIP_DEPLOY == false }
+            }
+            steps{
+                
+                dir("infra/portal-adp-deploy/portal-ui-deploy"){
+                    updateBackend(env.new_version, "test", "", env.client_id, env.azure_secret, env.portal_functional_USR, env.portal_functional_PSW )
+                }
+            }
+        }
+        stage("Generate Test Data") {
+            when{
+                expression { ( params.RESTORE_DB != null && params.RESTORE_DB == true ) && ( params.USE_TEST_DATA == null || params.USE_TEST_DATA == true ) }
+            }
+            steps{
+                
+                dir("infra/portal-adp-deploy/portal-ui-deploy"){
+                    generateTestData("test", "", "0", "0")
+                }
+            }
+        }
+        stage("Cypress E2E Tests") {
+            when{
+                expression { params.SKIP_CYPRESS_E2E == null || params.SKIP_CYPRESS_E2E == false }
+            }
+            parallel {
+                stage('Cypress runner 1') {
+                    steps {
+                        
+                        dir('adp/e2e/cypress-test'){
+                            sh '''
+                            # docker run cypress testware
+                            ./run-tests.sh testing-pipeline ${new_version} ${BUILD_NUMBER} 1
+                            # OR ssh on to staging and docker-run testware
+                            '''
+                        }
+                    }
+                }
+                // second tester runs the same command
+                stage('Cypress runner 2') {
+                    steps {
+                        
+                        dir('adp/e2e/cypress-test'){
+                            sh '''
+                            # docker run cypress testware
+                            ./run-tests.sh testing-pipeline ${new_version} ${BUILD_NUMBER} 2
+                            # OR ssh on to staging and docker-run testware
+                            '''
+                        }
+                    }
+                }
+                stage('Cypress runner 3') {
+                    steps {
+                        
+                        dir('adp/e2e/cypress-test'){
+                            sh '''
+                            # docker run cypress testware
+                            ./run-tests.sh testing-pipeline ${new_version} ${BUILD_NUMBER} 3
+                            # OR ssh on to staging and docker-run testware
+                            '''
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts 'adp/e2e/cypress-test/junit-reports/**/*.xml'
+                }
+            }
+
+        }
+        stage("Pre Collection Setup") {
+            when{
+                expression { params.SKIP_TESTS == null || params.SKIP_TESTS == false }
+            }
+            steps {
+                
+                dir("infra/portal-adp-deploy/portal-ui-deploy"){
+                    loadEnvVariables("test", "")
+                }
+                dir('backend'){
+                    checkoutBackend()
+                    dir("integration-tests") {
+                        apiSetupTests(env.deployed_backend_version)
+                    }
+                }
+            }
+        }
+        stage("Run Collection Scripts") {
+            when{
+                expression { ( params.SKIP_COLLECTION == null || params.SKIP_COLLECTION == false ) }
+            }
+            steps{
+                dir('backend'){
+                    collectStatistics(env.testenv)
+                }
+            }
+        }
+        stage("Test") {
+            when{
+                expression { params.SKIP_E2E == null || params.SKIP_E2E == false }
+            }
+            steps {
+                
+                
+                dir("infra/portal-adp-deploy/portal-ui-deploy"){
+                    loadEnvVariables("test", "")
+                }
+                dir('adp'){
+                    sh '''
+                    ls . -l
+                    '''
+                    runTests()    
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts 'adp/e2e/protractor/REPORTS/**/*'
+                }
+            }
+        }
+        
+
+        // stage("Update backend Staging") {
+        //     steps{
+        
+        //         dir("infra/portal-adp-deploy/portal-ui-deploy"){
+        //          updateBackend(env.new_version, "new_stage", "", env.client_id, env.azure_secret, env.portal_functional_USR, env.portal_functional_PSW)
+        //      }
+        //     }
+        // }
+        // stage("Update frontend Staging") {
+        //     steps {
+        //         script {
+        //             currentBuild.description = env.new_version
+        //         }
+        //         dir("infra/portal-adp-deploy/portal-ui-deploy"){
+        //             updateFrontend(env.new_version, "new_stage", "" )
+        //         }
+        //     }
+        // }
+        // stage("Generate Performance Test Data") {
+        //     steps{
+        //         
+        //         dir("infra/portal-adp-deploy/portal-ui-deploy"){
+        //             generateTestData("test", "", "1000", "10000")
+        //         }
+        //     }
+        // }
+        // stage("Performance Tests") {
+        //     steps {
+        //         
+        //         dir("infra/portal-adp-deploy/ssl/gatling/"){
+        //             performanceTests("new_stage", "0", "8", "300", params.auth_token)
+        //         }
+        //     }
+        //     post {
+        //        always {
+        //             archiveArtifacts artifacts: 'infra/portal-adp-deploy/ssl/gatling/report.zip'
+        //        }
+        //     }
+        // }
+        // stage("Restore DB Staging") {
+        //     when{
+        //         expression { params.RESTORE_DB == true }
+        //     }
+        //     steps{
+        //         
+        //         dir("infra/portal-adp-deploy/portal-ui-deploy"){
+        //             refreshDatabase("new_stage", "")
+        //         }
+        //     }
+        // }
+    }
+    
+    
+}
+def setCommitInfo(){
+    script {
+        if (env.GERRIT_NEWREV) {
+            env.commit=env.GERRIT_NEWREV
+        } else {
+            com = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
+            echo com
+            env.commit=com
+        }
+        tempversion = sh (script: 'tag=$(echo ${commit} | cut -c1-7);new_version=$(date -d @$(git log -n1 --format="%at") +%Y.%m.%d.%H%M).${tag};echo $new_version',
+        returnStdout: true).trim()
+        env.new_version=tempversion
+    }
+}
+
+
+def loadEnvVariables(type, number){
+    script {
+        if (params.branch_to_build != null) {
+            env.checkout_branch=params.branch_to_build
+        } else {
+            env.checkout_branch="master"
+        }
+        env.env_number=number
+        env.env_type=type
+        env.baseurl = sh (script: "export env_number=$number;. ./configs/$type; echo \$baseurl", returnStdout: true).trim()
+        env.testenv = sh (script: "export env_number=$number;. ./configs/$type; echo \$testenv", returnStdout: true).trim()        
+    }
+}
+
+def testEnvVariables() {
+    sh '''
+    echo "Show environment variables"
+    echo "new_version : ${new_version}"
+    echo "baseurl : ${baseurl}"
+    echo "testenv : ${testenv}"
+    echo "compose_location : ${compose_location}"
+    echo "version_key : ${version_key}"
+    echo "env_file : ${env_file}"
+    echo "service_name : ${service_name}"
+    echo "container_name : ${container_name}"
+    echo "nginx_service : ${nginx_service}"
+    echo "ssh_user: $ssh_user"
+    echo "adp_user: $adp_user"
+    echo "adp_group: $adp_group"
+    echo "target_host: $target_host"
+    echo "key_file: $key_file"
+    echo "database_dir: $database_dir"
+    echo "backup_location: $backup_location"
+    echo "master_backup_location: $master_backup_location"
+    echo "compose_filename: $compose_filename"
+    echo "database_service_name: $database_service_name"
+    '''
+}
+
+
+def runTests() {
+    sh '''
+            docker run armdocker.rnd.ericsson.se/aia/adp/adp-gui-container:1.0.8 webdriver-manager status
+            ./docker-test.sh -v 1.0.8 -u ${baseurl} -a "--verbose --troubleshoot --stacktrace"
+        '''
+}
+
+def apiSetupTests(deployed_backend_version){
+    withEnv(["deployed_backend_version=$deployed_backend_version"]){
+        sh '''
+        backend_url="${baseurl}api/"
+        echo $backend_url
+        ./docker-unit.sh -u ${backend_url} -n 0 -c collectionSetup.json
+        '''
+    }
+}
+
+def collectStatistics(testenv) {
+    withEnv(["testenv=$testenv"]){
+        sh '''
+        export container_name="dupe0_adp_backend"
+        ssh $testenv "docker exec -d -i $container_name /bin/sh -c 'npm run gerritContributorsStatistics'"
+        '''
+    }
+}
+
+def checkoutBackend() {
+    checkout([$class: 'GitSCM', branches: [[name: "refs/heads/master"]],
+        userRemoteConfigs: [
+        [name: 'gcm', url: '${GERRIT_MIRROR}/AIA/api/adp']
+        ]
+        ])
+}
+
+def checkoutFrontend() {
+    checkout([$class: 'GitSCM', branches: [[name: "*/${branch_to_build}"]],
+                    userRemoteConfigs: [
+                    [name: 'gcm', url: '${GERRIT_MIRROR}/AIA/ui/adp']
+                    ]
+                    ])
+}
+def checkoutInfra(){
+    checkout([$class: 'GitSCM',
+            branches: [[name: '*/master']],
+            userRemoteConfigs: [
+            [name: 'gcm', url: '${GERRIT_MIRROR}/AIA/CI/infra']
+            ]
+            ])
+        sh '''
+        rm -rf dsl
+        du -sh ./*
+        '''
+}
+
+def buildFrontEnd(){
+    sh '''
+    dep_version=$(cat src/assets/config/api.conf)
+    sed -i "s/0.0.0.0/${dep_version}/g" src/index.html
+    echo $new_version
+    rm -f target/*.zip
+    ./docker-unit-build.sh
+    # docker run adp-angular:7.10.3 "ng build"
+    ./publish.sh $new_version
+    '''
+}
+
+
+
+def refreshDatabase(environment_type, environment_number) {
+     withEnv(["environment_type=$environment_type", "environment_number=$environment_number"]){
+    sh '''
+        export env_number=${environment_number}
+        . ./configs/${environment_type}
+        . ./configs/config_tester.sh
+        ./mongo_update.sh -u ${user} -a ${adp_user} -g ${adp_group} -h ${target_host} -k ${key_file} -t ${mongo_master_backup_location} -s ${mongo_database_service_name} -q ""
+        '''
+     }
+}
+
+def generateTestData(environment_type, environment_number, ms_count, user_count) {
+    withEnv(["environment_type=$environment_type", "environment_number=$environment_number", "ms_count=$ms_count", "user_count=$user_count"]){
+    sh '''
+        export env_number=${environment_number}
+        . ./configs/${environment_type}
+        . ./configs/config_tester.sh
+        ./test_data_apply.sh -u ${user} -h ${target_host} -k ${key_file} -n ${container_name} -c ${compose_location} -p ${compose_filename} -s ${database_service_name} -m ${ms_count} -l ${user_count}
+        '''
+     }
+}
+
+def updateBackend(frontend_version, environment_type, environment_number, client_id, azure_secret, functional_user, functional_pass) {
+    withEnv(["frontend_version=$frontend_version",
+        "environment_type=$environment_type",
+        "environment_number=$environment_number",
+        "AZURE_CLIENT_SECRET=$azure_secret",
+        "AZURE_CLIENT_ID=$client_id",
+        "portal_functional_user=$functional_user",
+        "portal_functional_pass=$functional_pass"
+        ]){
+    sh '''
+        rm -rf ./*.zip
+        ./get.sh -v ${frontend_version}
+        deploy_file=$(ls -rt ./*.zip | tail -1)
+        echo $frontend_version
+        
+        export env_number=${environment_number}
+        . ./configs/${environment_type}
+        . ./configs/config_tester.sh
+        
+        rm -rf dist
+        unzip ${deploy_file}
+        api_version=$(cat dist/assets/config/api.conf)
+        vact="source /local/dock-env/bin/activate; export AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}; export AZURE_CLIENT_ID=${AZURE_CLIENT_ID}; export PORTAL_FUNC_USER=${portal_functional_user}; export PORTAL_FUNC_USER_PASSWORD=${portal_functional_pass}"
+        ssh $testenv "sed -i \"s/${version_key}=.*\$/${version_key}=${api_version}/\" $env_file"
+
+        cp dist/assets/config/backend.env ./backend.env 2>/dev/null || :
+        # If backend.env does not exist this step will do nothing
+        if [[ "$environment_type" = "test" || "$environment_type" = "dev" ]]; then
+            ./update_env_file.sh -e insert -f ${compose_location}/.env -k ~/.ssh/id_rsa -t ${testenv} -n ${number} 
+        else
+            ./update_env_file.sh -e copy -f ${compose_location}/.env -k ~/.ssh/id_rsa -t ${testenv} -n ${number} 
+        fi
+
+        ssh $testenv "${vact}; cd $compose_location;docker-compose pull --ignore-pull-failures $deployable_services"
+        
+        ssh $testenv "${vact}; cd $compose_location;docker-compose up -d $deployable_services"
+        
+        if [[ "${restart_nginx}" = true ]];
+        then
+        ssh $testenv "${vact}; cd $compose_location;docker-compose restart $nginx_service"
+        fi
+        '''
+    }
+    env.deployed_backend_version = sh (script: "cat dist/assets/config/api.conf", returnStdout: true).trim()
+}
+
+def updateFrontend(deploy_version, environment_type, environment_number ) {
+    
+        withEnv(["deploy_version=$deploy_version", "environment_type=$environment_type", "environment_number=$environment_number"]){
+            sh '''
+            rm -rf ./*.zip
+            ./get.sh -v ${deploy_version}
+            echo $deploy_version
+            
+            export env_number=${environment_number}
+            . ./configs/${environment_type}
+            . ./configs/config_tester.sh
+
+            deploy_file=$(ls -rt ./*.zip | tail -1)
+            
+            ./deploy.sh -u ${user} -h $target_host -b $adp_bkp -d $adp_folder -k ${key_file} -f ${deploy_file} -a ${adp_user} -g ${adp_group} -j jsons/${env_json}
+            '''
+        }
+}
+
+def performanceTests(environment_type, environment_number, new_users_persec, duration_secs, token){
+    withEnv(["e_type=$environment_type", "e_number=$environment_number", "users=$new_users_persec", "duration=$duration_secs", "user_auth_token=$token"]){
+
+        sh '''
+            export env_number=${e_number}
+            export env_type=${e_type}
+            . ../../portal-ui-deploy/configs/${env_type}
+            . ../../portal-ui-deploy/configs/config_tester.sh
+            chmod +x setPerms.sh
+            ./setPerms.sh
+            rm -rf results/*
+            rm -rf report.zip
+            
+            if [[ "${env_type}" = dev ]]; then
+                token=${env_type}${env_number}
+            else
+                token=${env_type}
+            fi
+            echo ${token}
+
+            echo slug > conf/dynamic.csv
+            cat ../../portal-ui-deploy/microservices-slugs.csv >> conf/dynamic.csv
+            wc -l conf/dynamic.csv
+
+            chmod +x load.sh 
+            ./load.sh ${token} ${users} ${duration} config ${user_auth_token}
+            ls -lrth
+            zip -r report results
+        '''
+    }
+}

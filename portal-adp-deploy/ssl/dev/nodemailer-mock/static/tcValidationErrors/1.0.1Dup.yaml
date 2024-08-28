@@ -1,0 +1,5 @@
+version: '1.0.1'
+documents:
+ - name: 'duplicateVersion'
+   external-link: 'duplicateVersion'
+   

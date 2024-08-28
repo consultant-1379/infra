@@ -1,0 +1,50 @@
+#!/bin/bash
+
+repo_root=${PWD}
+if [[ "${chosen_environment}" = "live" ]];
+then
+target_host=seliius23906.seli.gic.ericsson.se
+elif [[ "${chosen_environment}" = "new_staging" ]];
+then
+target_host=seliius21284.seli.gic.ericsson.se
+else
+target_host=seliius18473.seli.gic.ericsson.se
+fi
+
+
+
+echo ${target_host}
+
+host_user=root
+adp_user=ejohdol
+adp_group=eusers
+
+
+cypress_location=/local/cypress
+
+testenv=${host_user}@${target_host}
+
+ssh_cmd="ssh -i /home/aiaadm100/.ssh/id_rsa ${testenv}"
+
+vact="source /local/dock-env/bin/activate"
+
+if [[ "${chosen_operation}" = "build" ]];
+then
+./build-images.sh
+./publish-images.sh
+fi
+
+if [[ "${chosen_operation}" = "fullRedeploy" ]];
+then
+cd portal-adp-deploy/ssl/dev/cypress
+./setup-ci.sh -u ${host_user} -h ${target_host}
+fi
+
+if [[ "${chosen_operation}" = "stop" ]];
+then
+${ssh_cmd} "cd ${cypress_location};${vact};docker-compose down"
+fi
+
+
+cd ${repo_root}
+rm -rf ./*

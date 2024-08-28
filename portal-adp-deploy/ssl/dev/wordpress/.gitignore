@@ -1,0 +1,5 @@
+/src/vendor
+/src/themes/adp-portal/.phpunit.result.cache
+/src/themes/adp-portal/specs/report.htmlD
+/src/themes/adp-portal/specs/report.xml
+/src/composer.lock

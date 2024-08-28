@@ -1,0 +1,157 @@
+#cloud-config
+timezone: Europe/Dublin
+ssh_pwauth: yes
+chpasswd: { expire: False }
+package_update: true
+chpasswd:
+  list: |
+    centos:centos
+    root:password
+  expire: false
+yum_repos:
+    epel_custom:
+        name: Extra Packages for Enterprise Linux 7 - $basearch
+        baseurl: http://download.fedoraproject.org/pub/epel/7/$basearch
+        mirrorlist: https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch
+        failovermethod: priority
+        enabled: true
+        gpgcheck: false
+       
+packages:
+- vim
+- git
+- tree
+- wget
+- screen
+- atop
+- iftop
+- jq
+- rsync
+- docker
+- docker-compose
+- zip
+- unzip
+- bind-utils
+write_files:
+ - content: |
+    # This file controls the state of SELinux on the system.
+    # SELINUX= can take one of these three values:
+    #     enforcing - SELinux security policy is enforced.
+    #     permissive - SELinux prints warnings instead of enforcing.
+    #     disabled - No SELinux policy is loaded.
+    SELINUX=disabled
+    # SELINUXTYPE= can take one of three two values:
+    #     targeted - Targeted processes are protected,
+    #     minimum - Modification of targeted policy. Only selected processes are protected. 
+    #     mls - Multi Level Security protection.
+    SELINUXTYPE=targeted
+   owner: root:root
+   path: /etc/sysconfig/selinux
+   permissions: '0644'
+ - content: |
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDiEGiKZqXfsNgdTGHZmkI17XYRV4iuGD4ipRD1YDRbQX3Kmk9WMEPexRF2afSDZVvqN9IxDSzr4xaqkHNS6cBlHd2KI4ZCnPGREaidm4nCnt97WL3K/h4V3ToPjfaQM/Xt/gw0VL974Mj4u7nCw0p/b0s5qGbm6TzHXJ4tWvCxNq9fXJt2cA1lnV45W3c401wP4VxaSSBBqA6vCbfRo4x1aTlkeUhAWbhgJ4CMBVDyEJxhwTKwxXSPm1A/VJBOYhla2J8HpGEOtngmZ0uMZftt8SpzYI9R8obTrPiihmkxrqYm6fZP/6VgexuoiW8lBbDo3JSu47pveNTHH3msuMnf
+   owner: root:root
+   path: /root/.ssh/id_rsa.pub
+   permissions: '0644'
+ - content: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpQIBAAKCAQEA4hBoimal37DYHUxh2ZpCNe12EVeIrhg+IqUQ9WA0W0F9yppP
+    VjBD3sURdmn0g2Vb6jfSMQ0s6+MWqpBzUunAZR3diiOGQpzxkRGonZuJwp7fe1i9
+    yv4eFd06D432kDP17f4MNFS/e+DI+Lu5wsNKf29LOahm5uk8x1yeLVrwsTavX1yb
+    dnANZZ1eOVt3ONNcD+FcWkkgQagOrwm30aOMdWk5ZHlIQFm4YCeAjAVQ8hCcYcEy
+    sMV0j5tQP1SQTmIZWtifB6RhDrZ4JmdLjGX7bfEqc2CPUfKG06z4ooZpMa6mJun2
+    T/+lYHsbqIlvJQWw6NyUruO6b3jUxx95rLjJ3wIDAQABAoIBAQC2mt52/Vd7i1Pm
+    xq47oZleCkRW2cg0KKz4OzGpo15nYE2F/IOdcTtBlRn39rpl8NgAJ7sHmEby++px
+    OGGPVfXtN+SeEvf+ktumfQcg2GS86qxG7HXSpNYUfzDJI7lI3lAHQDEHjHVoUTjF
+    go4YvrtMmM/A8UC9wSUxPKUgqdbGrYo9W0SE0pcol5iphC8D+5nqGnWw2FWY+Rab
+    U8x7vWSF2VItBPGaYBcxzLeqIVH7ODojW+o3uHY60i2340ngfQh+FGvkx3pJq9ou
+    KVgiFvIs6ctf2VGQ79JECZXvRhUxRZK6Eh4UHtuDAnjMxNjuQd/njcbzva9XvAIG
+    hhEpPpaBAoGBAP+F/WPaH3Wb05vqzzHHMVadvZp6O6Xs1GJrUnV2mZjx9a++adoe
+    K7Cd9SfTDQ0juE/Ny1LXyEHT379I/f6BTt0C8kF5/q9nUKNhQkc9fW1RUQUxNDbS
+    5U7BczKlmM2v3uZnc7WjNRZXhnhLbm/kaxUZ3t5jmLi1a1/TOG25mDC/AoGBAOJ8
+    Whx2M/b9mvsLljOW0UwIAqlrOmkPodsmnxcu9LX+2mpUgM71yckJxvvU3iuL/IcO
+    FarURBeHw8PnGbJxsU4a2QTFY2Os156KdYXGt1Mu0XNPjjTptE+fWJZopsAZJAmu
+    FmVR4erqrHMWFoLIMnkFshiqzrrddrmFwE2sFI7hAoGBAISKMdc7axoMDAVSFMsT
+    MYpmI9UfFhWI9NlgJdN8A0wMJY5VTH6xK6RfKqzPknOAVbg/XPnJp7xNdD+6UtVS
+    qV+GibZg2zSMeI1mg4SEZqzvgwEYdqcBWaQyP9jDgLEgSpRkkOZkk8LU/5EiP1SW
+    vNyjILFmI++bWujHnPt9S23tAoGAJ8UWPbEz5scZk8OxGFX/Yo51iTJfC1vHXCgn
+    /3YrWlnqGInGJJFcYYTqAAadDKCEM2LxwxGK82bPpXLLPF5ieAiW2xOeJD6RjjFZ
+    +aevQVgTR2BM5FW1Z9XfRGoT/d9sSJbdL+V0+j9DEOJsCYMF+eJaJ6K2snF5C5LE
+    9d6lrYECgYEAwHy9mTg1hZXbULml/OEjSh48rGmnvveYn1pkurmMpV9H6zotU+ID
+    rgib7VITn3H6Gi0lxlWEQDm5dHidvAvjxS8WvDkqPCjNHg0OF2FiOwxy6LeOEYCt
+    TB4oVhpRgahnUAQiKEMYAHq9ZhyOL50zakD1O+cSz8jkhYHO5ZaxUXA=
+    -----END RSA PRIVATE KEY-----
+   owner: root:root
+   path: /root/.ssh/id_rsa
+   permissions: '0600'
+ - content: |
+    #!/usr/bin/bash
+    FLOATIP=$( dig +short `hostname -s`.gtcl1a.acme.com )
+    systemctl enable docker 
+    systemctl start  docker
+    mkdir -p  ~/portal-compose/backup
+    cd ~/portal-compose
+    if [ ! -n "$(grep "^export HOSTIP=" ~/.bashrc)" ]
+    then
+      echo "export HOSTIP=$FLOATIP" >> /root/.bashrc 
+    fi
+    source ~/.bashrc
+    mkdir -p /data/{wordpress,adp}
+    if [ ! -n "$(grep "gerrit-gamma.gic.ericsson.se" ~/.ssh/known_hosts)" ]
+    then
+     ssh-keyscan -p 29418 gerrit-gamma.gic.ericsson.se >> ~/.ssh/known_hosts 2>/dev/null
+    fi
+    #
+    # get the adp files from git, latest version is pulled
+    /usr/bin/git clone ssh://lmistky@gerrit-gamma.gic.ericsson.se:29418/AIA/ui/adp
+    cd ~/portal-compose/adp
+    #
+    # remove the git file and move the portal to the /data location
+    cd /root
+    rm -rf ~/portal-compose/adp/.git
+    mv -f ~/portal-compose/adp /data/
+    rm -rf ~/portal-compose/adp
+    # 
+    # Haven't seen the config for ADP possible this will be needed but with updates to the IP
+    #    sed -i "s/analytics.ericsson.se/$HOSTIP/g" /data/portal/app/api.js
+    #    sed -i "s/eselivm3v260l.lmera.ericsson.se/$HOSTIP/g" /data/portal/app/api.js
+    #    sed -i "s/eselivm3v258l.lmera.ericsson.se/$HOSTIP/g" /data/portal/app/api.js
+    #
+    # bring wordpress config in and place it into /data    
+    mkdir -p  ~/portal-compose/backup
+    rsync --progress -vh 10.44.149.130::store/* ~/portal-compose/backup/
+    chmod -R 777  ~/portal-compose/backup
+    /usr/bin/tar xf ~/portal-compose/backup/wordpress.tar -C /data
+    #
+    # bring in the compose file for bringing the services online
+    /usr/bin/git clone ssh://lmistky@gerrit-gamma.gic.ericsson.se:29418/AIA/CI/infra/ ~/tmp-compose
+    mv ~/tmp-compose/portal-adp-deploy/adp_docker-compose.yml ~/portal-compose/docker-compose.yml
+    rm -rf ~/tmp-compose
+    cd ~/portal-compose
+    /usr/bin/docker-compose up -d 
+    #
+    #clean up
+    cd   ~/portal-compose/backup
+   owner: root:root
+   path: /root/portal-install.sh
+   permissions: '0744'
+   
+ - content: |
+    #!/bin/bash
+    cd /root/portal-compose
+    docker-compose kill 
+    docker-compose rm  --force
+    cd /root
+    rm -rf /data
+    rm -rf /root/portal-compose
+   owner: root:root
+   path: /root/portal-teardown.sh
+   permissions: '0744'
+runcmd:
+- sed -i'.orig' -e's/without-password/yes/' /etc/ssh/sshd_config
+- service sshd restart
+- /sbin/setenforce 0
+- sudo su -c '/root/portal-install.sh |&  tee /root/portal-deploy.log'
+Powered by Gitiles
+txt
+json
